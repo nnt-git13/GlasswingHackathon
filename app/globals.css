@@ -5775,6 +5775,20 @@ svg {
   }
 }
 
+
+/* Replay: keep policy context visible while inspecting the full trace */
+@media (min-width: 1051px) {
+  .replay-sidebar {
+    position: sticky;
+    top: 82px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+    scrollbar-width: thin;
+  }
+}
+
 /* Dashboard: autonomous commerce health hierarchy */
 .commerce-health {
   overflow: hidden;

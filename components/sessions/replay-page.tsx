@@ -414,9 +414,11 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
               <ShieldCheck size={23} />
             </span>
             <h3>
-              {session.status === 'Failed'
-                ? 'Your session stayed safe'
-                : 'Your policies are working'}
+              {session.status === 'Blocked'
+                ? 'Unsafe action stopped'
+                : session.status === 'Failed'
+                  ? 'Session remained contained'
+                  : 'Safety controls held'}
             </h3>
             <p>
               {featured
