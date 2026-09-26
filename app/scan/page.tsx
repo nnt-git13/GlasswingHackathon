@@ -7,7 +7,7 @@ import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, CardHeader, SeverityBadge, StatusBadge } from '@/components/ui/primitives';
 import { latestScan, scanFixes, scanIssues } from '@/lib/mock-data/scans';
 import { cn } from '@/lib/utils';
-import { ArrowRight, CheckCircle2, ChevronRight, Clock3, FileCode2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 export default function ScanPage() {
@@ -27,15 +27,6 @@ export default function ScanPage() {
           <GlobeSmall />
           {environment}
         </span>
-        <span>
-          <FileCode2 size={13} />
-          86 pages
-        </span>
-        <span>
-          <Clock3 size={13} />
-          2m 34s
-        </span>
-        <span>5 agent profiles tested</span>
       </div>
       <Card className="agent-test-run">
         <div className="agent-test-summary">
@@ -50,7 +41,7 @@ export default function ScanPage() {
           <div className="agent-test-metrics">
             <span>
               <strong>{scanIssues.length}</strong>
-              priority findings
+              prioritized findings
             </span>
             <span>
               <strong>{scanIssues.filter((issue) => issue.severity === 'Critical').length}</strong>
@@ -58,7 +49,7 @@ export default function ScanPage() {
             </span>
             <span>
               <strong>{latestScan.phases.reduce((sum, item) => sum + item.issues, 0)}</strong>
-              checks need attention
+              surface checks need attention
             </span>
           </div>
         </div>
