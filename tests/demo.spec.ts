@@ -34,6 +34,20 @@ test('all demo routes render without client errors and primary surfaces are capt
   expect(errors).toEqual([]);
 });
 
+
+test('dashboard separates rolling outcomes from the latest readiness scan', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page.getByText('Last 7 days', { exact: true })).toBeVisible();
+  await expect(page.getByText('Latest readiness scan', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Latest scan · 86 pages · 48 shopping sessions · 5 agent profiles', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Run new scan' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Run Scan', exact: true })).toHaveCount(1);
+});
+
 test('shell dropdowns, scan lifecycle, and finding expansion', async ({ page }) => {
   await page.goto('/dashboard');
   await page.getByRole('button', { name: 'Evertrail Outdoors', exact: true }).click();
@@ -42,7 +56,7 @@ test('shell dropdowns, scan lifecycle, and finding expansion', async ({ page }) 
   await page.getByRole('button', { name: 'Production', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Staging', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Staging', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Run new scan' }).click();
+  await page.getByRole('button', { name: 'Run Scan', exact: true }).click();
   await expect(page.getByRole('progressbar')).toBeVisible();
   await expect(page.getByRole('status')).toContainText('Readiness scan complete', {
     timeout: 10000,
