@@ -70,7 +70,11 @@ export function RecommendationCard({
           <strong>{r.title}</strong>
         </span>
         <StatusBadge tone={isVerified ? 'green' : isResolved ? 'neutral' : 'blue'}>
-          {isVerified ? 'Verified' : isResolved ? 'Resolved · unverified' : 'High impact'}
+          {isVerified
+            ? 'Verified'
+            : isResolved
+              ? 'Resolved · unverified'
+              : `${r.impactLevel} impact`}
         </StatusBadge>
         <ChevronDown size={17} className={cn(expanded && 'rotate-180')} />
       </button>

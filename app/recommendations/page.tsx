@@ -11,6 +11,9 @@ export default function RecommendationsPage() {
   const [tab, setTab] = useState('Open');
   const [category, setCategory] = useState('All categories');
   const { resolved, verified } = useApp();
+  const openHighImpact = recommendations.filter(
+    (r) => r.impactLevel === 'High' && !resolved.includes(r.id),
+  ).length;
   const visible = recommendations.filter(
     (r) =>
       (category === 'All categories' || category === r.category) &&
@@ -36,7 +39,7 @@ export default function RecommendationsPage() {
         />
         <MetricCard
           label="High impact"
-          value={String(Math.max(0, 5 - resolved.length))}
+          value={String(openHighImpact)}
           detail="Address these recommendations first"
         />
         <MetricCard label="Quick wins" value="4" detail="Less than one day to implement" />

@@ -161,6 +161,9 @@ test('recommendation implementation and verification move an issue to resolved',
   page,
 }) => {
   await page.goto('/recommendations');
+  await expect(page.getByText('High impact', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('4', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('#REC-005')).toContainText('Medium impact');
   const card = page.locator('#REC-001');
   await expect(card.getByRole('link', { name: 'View evidence' })).toHaveAttribute('href', '/scan');
   await card.getByRole('button', { name: 'View implementation' }).click();

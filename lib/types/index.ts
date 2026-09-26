@@ -44,6 +44,7 @@ export interface Recommendation {
   reason: string;
   fix: string;
   impact: string;
+  impactLevel: 'High' | 'Medium';
   effort: string;
   affected: number;
   category: string;
