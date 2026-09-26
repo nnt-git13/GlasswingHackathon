@@ -166,14 +166,19 @@ export function OperationalChart({
     </div>
   );
 }
-export function AgentDistributionChart() {
+export function AgentDistributionChart({
+  data = agentDistribution,
+}: {
+  data?: { name: string; value: number; color: string }[];
+}) {
+  const total = data.reduce((sum, a) => sum + a.value, 0);
   return (
     <div className="distribution-chart">
       <div className="donut-wrap">
         <ResponsiveContainer width="100%" height={170}>
           <PieChart>
             <Pie
-              data={agentDistribution}
+              data={data}
               dataKey="value"
               nameKey="name"
               innerRadius={54}
@@ -182,7 +187,7 @@ export function AgentDistributionChart() {
               stroke="none"
               isAnimationActive={false}
             >
-              {agentDistribution.map((a) => (
+              {data.map((a) => (
                 <Cell key={a.name} fill={a.color} />
               ))}
             </Pie>
@@ -190,12 +195,12 @@ export function AgentDistributionChart() {
           </PieChart>
         </ResponsiveContainer>
         <div className="donut-label">
-          <strong>1,248</strong>
+          <strong>{total.toLocaleString()}</strong>
           <span>sessions</span>
         </div>
       </div>
       <div className="chart-legend-list">
-        {agentDistribution.map((a) => (
+        {data.map((a) => (
           <div key={a.name}>
             <span style={{ background: a.color }} />
             <span>{a.name}</span>

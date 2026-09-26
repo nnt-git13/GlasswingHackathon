@@ -171,6 +171,118 @@ export interface NextStepsScanResult {
   scannedAt: string;
   recommendations: Recommendation[];
 }
+
+/** A single detected issue on the /scan report (distinct from the lighter `ScanIssue` used inside other *ScanResult contracts). */
+export interface ScanIssueDetail {
+  id: number;
+  title: string;
+  category: string;
+  severity: Severity;
+  description: string;
+}
+
+/** A suggested fix on the /scan report. */
+export interface ScanFix {
+  title: string;
+  impact: string;
+}
+
+/**
+ * Contract for the agent's full scan report: the latest run's metadata plus
+ * the issues it found and the fixes it suggests. Post matching this shape to
+ * `/api/scan-report`; `lib/scan-report.ts` maps it onto the /scan page.
+ */
+export interface ScanReportScanResult {
+  scanId?: string;
+  scannedAt?: string;
+  scan: Scan;
+  issues: ScanIssueDetail[];
+  fixes: ScanFix[];
+  previewPages: string[];
+}
+
+/** A single summary metric tile (used on both /sessions and /security). */
+export interface SummaryMetric {
+  label: string;
+  value: string;
+  change?: string;
+  unit?: string;
+  detail: string;
+}
+
+/**
+ * Contract for the agent's session-monitoring report: every simulated
+ * shopping session it ran, the agent profiles involved, and the summary
+ * metrics across them. Shared by /sessions and /replays (same list, just a
+ * different heading). Post matching this shape to `/api/sessions`;
+ * `lib/sessions-report.ts` maps it onto both pages.
+ */
+export interface SessionsScanResult {
+  scanId?: string;
+  scannedAt?: string;
+  sessions: ShoppingSession[];
+  summary: SummaryMetric[];
+  agents: AgentProfile[];
+}
+
+/**
+ * Contract for the agent's security report: enforced policies, recent
+ * security events, and summary metrics. Shared by /security and the
+ * replay-detail sidebar. Post matching this shape to `/api/security-policies`;
+ * `lib/security-policies.ts` maps it onto both.
+ */
+export interface SecurityPoliciesScanResult {
+  scanId?: string;
+  scannedAt?: string;
+  policies: SecurityPolicy[];
+  events: SecurityEvent[];
+  metrics: SummaryMetric[];
+}
+
+/** One time-series point behind the /analytics operational charts. */
+export interface AnalyticsPoint {
+  name: string;
+  success: number;
+  checkout: number;
+  discovery: number;
+  blocked: number;
+  score: number;
+}
+
+/** One slice of the "sessions by agent type" donut chart on /analytics. */
+export interface AgentDistributionPoint {
+  name: string;
+  value: number;
+  color: string;
+}
+
+/** One row of the "most common failure modes" table on /analytics. */
+export interface FailureMode {
+  name: string;
+  sessions: number;
+  rate: string;
+  trend: 'up' | 'down' | 'flat';
+  change: string;
+}
+
+/**
+ * Contract for the agent's analytics report: operational time series for
+ * each range window, agent-type distribution, and failure modes. The agent
+ * posts all three range windows in one scan result (rather than three
+ * separate routes, or a client-driven re-fetch per range) so this stays a
+ * single-GET-returns-latest route like every other contract, and the range
+ * picker on /analytics just reads `ranges[range]` client-side. Post matching
+ * this shape to `/api/analytics`; `lib/analytics-report.ts` maps it onto the
+ * page.
+ */
+export interface AnalyticsScanResult {
+  scanId?: string;
+  scannedAt?: string;
+  ranges: Record<'7d' | '30d' | '90d', AnalyticsPoint[]>;
+  agentDistribution: AgentDistributionPoint[];
+  failureModes: FailureMode[];
+}
+
 export interface AgentProfile {
   name: string;
   short: string;

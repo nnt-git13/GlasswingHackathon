@@ -3,15 +3,27 @@ import { useApp } from '@/components/layout/app-provider';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, Tabs } from '@/components/ui/primitives';
-import { agents, sessions, sessionSummary } from '@/lib/mock-data/sessions';
+import { getSessionsReport, mockSessionsResult } from '@/lib/sessions-report';
+import type { SessionsScanResult } from '@/lib/types';
 import { Download, Play, ScanLine } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { defaultFilters, FilterBar, type SessionFilters } from './filter-bar';
 import { SessionTable } from './session-table';
 export function SessionsPage({ replays = false }: { replays?: boolean }) {
   const [filters, setFilters] = useState<SessionFilters>(defaultFilters);
   const [tab, setTab] = useState('All sessions');
+  const [report, setReport] = useState<SessionsScanResult>(mockSessionsResult);
   const { notify, runScan, scanning } = useApp();
+  useEffect(() => {
+    let cancelled = false;
+    getSessionsReport().then((result) => {
+      if (!cancelled) setReport(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const { sessions, summary: sessionSummary, agents } = report;
   const visible = useMemo(
     () =>
       sessions.filter(
@@ -31,7 +43,7 @@ export function SessionsPage({ replays = false }: { replays?: boolean }) {
           (tab === 'All sessions' ||
             (tab === 'With issues' ? s.issues > 0 : s.status === 'Blocked')),
       ),
-    [filters, tab],
+    [sessions, filters, tab],
   );
   const exportCSV = () => {
     const rows = [

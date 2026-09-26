@@ -4,13 +4,25 @@ import { RecommendationCard } from '@/components/recommendations/recommendation-
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Card, EmptyState, Select, Tabs } from '@/components/ui/primitives';
-import { recommendations } from '@/lib/mock-data/recommendations';
+import { recommendations as initialRecommendations } from '@/lib/mock-data/recommendations';
+import { getNextSteps } from '@/lib/next-steps';
+import type { Recommendation } from '@/lib/types';
 import { ArrowUpRight, CheckCheck, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 export default function RecommendationsPage() {
   const [tab, setTab] = useState('Open');
   const [category, setCategory] = useState('All categories');
+  const [recommendations, setRecommendations] = useState<Recommendation[]>(initialRecommendations);
   const { resolved, verified } = useApp();
+  useEffect(() => {
+    let cancelled = false;
+    getNextSteps().then((result) => {
+      if (!cancelled) setRecommendations(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const openHighImpact = recommendations.filter(
     (r) => r.impactLevel === 'High' && !resolved.includes(r.id),
   ).length;

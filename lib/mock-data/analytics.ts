@@ -1,3 +1,4 @@
+import type { FailureMode } from '@/lib/types';
 export const readinessTrend = [
   { name: 'Sep 02', score: 61, target: 80 },
   { name: 'Sep 08', score: 64, target: 80 },
@@ -37,7 +38,7 @@ export const agentDistribution = [
   { name: 'Copilot', value: 168, color: '#a58ad3' },
   { name: 'Synthetic baseline', value: 124, color: '#b6c2d7' },
 ];
-export const failureModes = [
+export const failureModes: FailureMode[] = [
   { name: 'Variant ambiguity', sessions: 143, rate: '11.4%', trend: 'down', change: '2.1%' },
   { name: 'Shipping uncertainty', sessions: 98, rate: '7.8%', trend: 'up', change: '0.8%' },
   { name: 'Checkout state mismatch', sessions: 71, rate: '5.7%', trend: 'down', change: '1.4%' },

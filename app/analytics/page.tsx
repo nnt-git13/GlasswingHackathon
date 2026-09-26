@@ -2,17 +2,27 @@
 import { AgentDistributionChart, ChartCard, OperationalChart } from '@/components/charts/charts';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Card, CardHeader } from '@/components/ui/primitives';
-import {
-  analyticsRanges,
-  failureModes,
-  getAnalyticsData,
-  type ChartRange,
-} from '@/lib/mock-data/analytics';
+import { getAnalyticsReport, mockAnalyticsResult } from '@/lib/analytics-report';
+import { analyticsRanges, type ChartRange } from '@/lib/mock-data/analytics';
+import type { AnalyticsPoint, AnalyticsScanResult } from '@/lib/types';
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Minus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 export default function AnalyticsPage() {
   const [range, setRange] = useState<ChartRange>('7d');
-  const data = useMemo(() => getAnalyticsData(range), [range]);
+  const [report, setReport] = useState<AnalyticsScanResult>(mockAnalyticsResult);
+  useEffect(() => {
+    let cancelled = false;
+    getAnalyticsReport().then((result) => {
+      if (!cancelled) setReport(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const data: AnalyticsPoint[] = useMemo(() => report.ranges[range], [report, range]);
+  const chartData = data as unknown as Record<string, string | number>[];
+  const { agentDistribution, failureModes } = report;
+  const maxFailureSessions = Math.max(1, ...failureModes.map((f) => f.sessions));
   return (
     <>
       <PageHeading
@@ -50,7 +60,7 @@ export default function AnalyticsPage() {
               across {range === '7d' ? '1,248' : range === '30d' ? '5,312' : '16,407'} sessions
             </small>
           </div>
-          <OperationalChart data={data} dataKey="success" />
+          <OperationalChart data={chartData} dataKey="success" />
         </ChartCard>
         <ChartCard
           title="Checkout completion rate"
@@ -62,7 +72,7 @@ export default function AnalyticsPage() {
             <span>%</span>
             <small>of checkout attempts</small>
           </div>
-          <OperationalChart data={data} dataKey="checkout" color="#2ba98b" />
+          <OperationalChart data={chartData} dataKey="checkout" color="#2ba98b" />
         </ChartCard>
         <ChartCard
           title="Product discovery success"
@@ -73,7 +83,7 @@ export default function AnalyticsPage() {
             <span>%</span>
             <small>matching customer intent</small>
           </div>
-          <OperationalChart data={data} dataKey="discovery" color="#7794cf" />
+          <OperationalChart data={chartData} dataKey="discovery" color="#7794cf" />
         </ChartCard>
         <ChartCard
           title="Policy violations blocked"
@@ -83,7 +93,7 @@ export default function AnalyticsPage() {
             {data.reduce((sum, d) => sum + d.blocked, 0)}
             <small>blocked actions · 100% enforced</small>
           </div>
-          <OperationalChart data={data} dataKey="blocked" color="#d8a055" bar percent={false} />
+          <OperationalChart data={chartData} dataKey="blocked" color="#d8a055" bar percent={false} />
         </ChartCard>
         <ChartCard
           title="Readiness score over time"
@@ -93,13 +103,13 @@ export default function AnalyticsPage() {
             74<span>/ 100</span>
             <small className="positive">+13 points over this period</small>
           </div>
-          <OperationalChart data={data} dataKey="score" color="#3976ed" percent={false} />
+          <OperationalChart data={chartData} dataKey="score" color="#3976ed" percent={false} />
         </ChartCard>
         <ChartCard
           title="Sessions by agent type"
           subtitle="Distribution across the latest 1,248 sessions"
         >
-          <AgentDistributionChart />
+          <AgentDistributionChart data={agentDistribution} />
           <div className="analytics-agent-footer">
             5 profiles<span>Cross-agent coverage</span>
           </div>
@@ -152,7 +162,7 @@ export default function AnalyticsPage() {
                   </td>
                   <td>
                     <div className="failure-bar">
-                      <span style={{ width: `${(f.sessions / 143) * 100}%` }} />
+                      <span style={{ width: `${(f.sessions / maxFailureSessions) * 100}%` }} />
                     </div>
                   </td>
                 </tr>

@@ -19,22 +19,26 @@ import {
   ShoppingBag,
   Target,
   Terminal,
+  Video,
   Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AgentTimeline } from './agent-timeline';
+import { ReplayScreen } from './replay-screen';
 export function ReplayPage({ session }: { session: ShoppingSession }) {
   const events = useMemo(() => getSessionEvents(session), [session]);
   const [tab, setTab] = useState('Timeline');
   const [playing, setPlaying] = useState(false);
   const [step, setStep] = useState(0);
   const [allEvents, setAllEvents] = useState(false);
+  const [watchingReplay, setWatchingReplay] = useState(false);
   const [focusEventId, setFocusEventId] = useState(
     () => events.find((event) => event.type === 'warning')?.id ?? events[0]?.id ?? 1,
   );
   const { notify } = useApp();
   const featured = session.id === 'SES-10482';
+  const currentEvent = events.find((event) => event.id === step) ?? events[0];
   useEffect(() => {
     if (!playing) return;
     const t = setInterval(
@@ -77,10 +81,22 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
         title="Agent Replay"
         subtitle="Follow the agent journey, inspect merchant evidence, and diagnose exactly where friction appeared."
         action={
-          <Button variant="outline" onClick={exportTrace}>
-            <Download size={14} />
-            Export trace
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (step >= events.length) setStep(0);
+                setWatchingReplay(true);
+              }}
+            >
+              <Video size={14} />
+              Watch visual replay
+            </Button>
+            <Button variant="outline" onClick={exportTrace}>
+              <Download size={14} />
+              Export trace
+            </Button>
+          </>
         }
       />
       <Card className="replay-metadata">
@@ -450,6 +466,44 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
           </div>
         </div>
       </div>
+      <Dialog
+        open={watchingReplay}
+        onOpenChange={setWatchingReplay}
+        title={`Visual replay · ${session.id}`}
+        description="A recreation of the storefront driven by this session's recorded steps — not a screen recording, since the agent doesn't capture video."
+      >
+        <ReplayScreen event={currentEvent} />
+        <div className="replay-controls">
+          <span className="table-subtext">
+            Step {Math.min(step, events.length)} of {events.length}
+          </span>
+          <div>
+            <button
+              aria-label="Reset replay"
+              onClick={() => {
+                setPlaying(false);
+                setStep(0);
+              }}
+            >
+              <RotateCcw size={13} />
+            </button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (step >= events.length) setStep(0);
+                setPlaying((playing) => !playing);
+              }}
+            >
+              {playing ? <Pause size={12} /> : <Play size={12} />}
+              {playing ? 'Pause' : 'Play'}
+            </Button>
+          </div>
+        </div>
+        <div className="playback-track">
+          <span style={{ width: `${(step / events.length) * 100}%` }} />
+        </div>
+      </Dialog>
       <Dialog
         open={allEvents}
         onOpenChange={setAllEvents}

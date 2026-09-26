@@ -11,13 +11,24 @@ import {
   SeverityBadge,
   StatusBadge,
 } from '@/components/ui/primitives';
-import { securityEvents, securityMetrics } from '@/lib/mock-data/security';
-import type { SecurityPolicy } from '@/lib/types';
+import { getSecurityPoliciesReport, mockSecurityPoliciesResult } from '@/lib/security-policies';
+import type { SecurityPoliciesScanResult, SecurityPolicy } from '@/lib/types';
 import { Check, ChevronRight, LockKeyhole, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 export default function SecurityPage() {
   const { policies, savePolicy, notify } = useApp();
+  const [report, setReport] = useState<SecurityPoliciesScanResult>(mockSecurityPoliciesResult);
+  useEffect(() => {
+    let cancelled = false;
+    getSecurityPoliciesReport().then((result) => {
+      if (!cancelled) setReport(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const { metrics: securityMetrics, events: securityEvents } = report;
   const [editing, setEditing] = useState<SecurityPolicy | null>(null);
   const [name, setName] = useState('');
   const [scope, setScope] = useState('All sessions');

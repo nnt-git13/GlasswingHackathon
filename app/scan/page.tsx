@@ -5,15 +5,28 @@ import { BrowserPreview } from '@/components/scans/browser-preview';
 import { ScanPhaseStepper } from '@/components/scans/scan-phase-stepper';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, CardHeader, SeverityBadge, StatusBadge } from '@/components/ui/primitives';
-import { latestScan, scanFixes, scanIssues } from '@/lib/mock-data/scans';
+import { getScanReport, mockScanReportResult } from '@/lib/scan-report';
+import type { ScanReportScanResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ArrowRight, CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 export default function ScanPage() {
   const [selected, setSelected] = useState(1);
   const [phase, setPhase] = useState<string | null>(null);
+  const [report, setReport] = useState<ScanReportScanResult>(mockScanReportResult);
   const { environment, scanNumber } = useApp();
+  useEffect(() => {
+    let cancelled = false;
+    getScanReport().then((result) => {
+      if (!cancelled) setReport(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const { scan: latestScan, issues: scanIssues, fixes: scanFixes } = report;
+  const criticalCount = scanIssues.filter((issue) => issue.severity === 'Critical').length;
   return (
     <>
       <PageHeading
@@ -44,7 +57,7 @@ export default function ScanPage() {
               prioritized findings
             </span>
             <span>
-              <strong>{scanIssues.filter((issue) => issue.severity === 'Critical').length}</strong>
+              <strong>{criticalCount}</strong>
               critical
             </span>
             <span>
@@ -98,7 +111,7 @@ export default function ScanPage() {
               title="Issues detected"
               action={
                 <StatusBadge tone="red" dot={false}>
-                  3 critical
+                  {criticalCount} critical
                 </StatusBadge>
               }
             />
@@ -140,7 +153,7 @@ export default function ScanPage() {
           <Card className="scan-fixes">
             <CardHeader
               title="Suggested fixes"
-              action={<span className="subtle-badge">4 fixes</span>}
+              action={<span className="subtle-badge">{scanFixes.length} fixes</span>}
             />
             {scanFixes.map((fix, i) => (
               <Link
