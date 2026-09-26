@@ -162,16 +162,17 @@ test('recommendation implementation and verification move an issue to resolved',
 }) => {
   await page.goto('/recommendations');
   const card = page.locator('#REC-001');
+  await expect(card.getByRole('link', { name: 'View evidence' })).toHaveAttribute('href', '/scan');
   await card.getByRole('button', { name: 'View implementation' }).click();
   await expect(page.getByRole('dialog')).toContainText('ProductGroup');
   await page.getByRole('button', { name: 'Close guide' }).click();
   await card.getByRole('button', { name: 'Verify fix' }).click();
-  await expect(card.getByRole('button', { name: 'Verifying…' })).toBeDisabled();
+  await expect(card.getByRole('button', { name: 'Rerunning scenarios…' })).toBeDisabled();
   await expect(page.getByRole('status')).toContainText('Verification run passed', {
     timeout: 10000,
   });
   await page.getByRole('tab', { name: 'Resolved', exact: true }).click();
-  await expect(page.locator('#REC-001')).toContainText('Verification passed');
+  await expect(page.locator('#REC-001')).toContainText('12/12 passed');
   await expect(
     page.locator('#REC-001').getByRole('button', { name: 'Verified', exact: true }),
   ).toBeDisabled();

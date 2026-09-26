@@ -3496,6 +3496,13 @@ svg {
 .recommendation-actions .btn {
   font-size: 11px;
 }
+.recommendation-action-left {
+  align-items: center;
+}
+.recommendation-evidence-link {
+  font-size: 10px;
+  white-space: nowrap;
+}
 .verification-result {
   display: flex;
   align-items: center;

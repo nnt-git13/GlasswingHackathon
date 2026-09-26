@@ -4,7 +4,7 @@ import { Button, Card, Dialog, LoadingLabel, StatusBadge } from '@/components/ui
 import type { Recommendation } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
-  Check,
+  ArrowRight,
   CheckCheck,
   ChevronDown,
   Code2,
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 export function RecommendationCard({
   recommendation: r,
@@ -102,49 +103,44 @@ export function RecommendationCard({
         </span>
       </div>
       <div className="recommendation-actions">
-        <Button variant="outline" size="sm" onClick={() => setImplementation(true)}>
-          <Code2 size={13} />
-          {r.id === 'REC-003' ? 'Generate policy' : 'View implementation'}
-        </Button>
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={isResolved}
-            onClick={() => {
-              resolve(r.id);
-              notify('Marked resolved. Run verification to confirm the fix.');
-            }}
-          >
-            <Check size={13} />
-            {isResolved ? 'Resolved' : 'Mark resolved'}
+        <div className="recommendation-action-left">
+          <Button variant="outline" size="sm" onClick={() => setImplementation(true)}>
+            <Code2 size={13} />
+            {r.id === 'REC-003' ? 'Generate policy' : 'View implementation'}
           </Button>
-          <Button
-            variant={isVerified ? 'outline' : 'default'}
-            size="sm"
-            disabled={verifying || isVerified}
-            onClick={verifyFix}
+          <Link
+            href={r.id === 'REC-004' ? '/replays/SES-10482' : '/scan'}
+            className="text-link recommendation-evidence-link"
           >
-            {verifying ? (
-              <LoadingLabel>Verifying…</LoadingLabel>
-            ) : isVerified ? (
-              <>
-                <CheckCheck size={13} />
-                Verified
-              </>
-            ) : (
-              <>
-                <Play size={12} />
-                Verify fix
-              </>
-            )}
-          </Button>
+            View evidence
+            <ArrowRight size={12} />
+          </Link>
         </div>
+        <Button
+          variant={isVerified ? 'outline' : 'default'}
+          size="sm"
+          disabled={verifying || isVerified}
+          onClick={verifyFix}
+        >
+          {verifying ? (
+            <LoadingLabel>Rerunning scenarios…</LoadingLabel>
+          ) : isVerified ? (
+            <>
+              <CheckCheck size={13} />
+              Verified
+            </>
+          ) : (
+            <>
+              <Play size={12} />
+              Verify fix
+            </>
+          )}
+        </Button>
       </div>
       {isVerified && (
         <div className="verification-result">
           <CheckCheck size={14} />
-          <span>Verification passed · 12 simulated shopping sessions · 0 regressions</span>
+          <span>Verification passed · same 12 shopping scenarios · 12/12 passed · 0 regressions</span>
           <span>Just now</span>
         </div>
       )}
@@ -180,7 +176,7 @@ export function RecommendationCard({
           <div className="info-panel">
             <FileCode2 size={16} />
             <span>
-              Apply this example to your storefront, then run a verification. The demo verifies
+              Apply this example to your storefront, then rerun the same scenarios. The demo verifies
               against simulated data.
             </span>
           </div>

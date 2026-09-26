@@ -10,7 +10,7 @@ import { useState } from 'react';
 export default function RecommendationsPage() {
   const [tab, setTab] = useState('Open');
   const [category, setCategory] = useState('All categories');
-  const { resolved } = useApp();
+  const { resolved, verified } = useApp();
   const visible = recommendations.filter(
     (r) =>
       (category === 'All categories' || category === r.category) &&
@@ -20,7 +20,7 @@ export default function RecommendationsPage() {
     <>
       <PageHeading
         title="Recommendations"
-        subtitle="Merchant-side changes that improve autonomous shopping performance."
+        subtitle="Merchant-side fixes from failed agent journeys. Apply a change, rerun the same scenarios, and verify the result."
         action={
           <span className="subtle-badge">
             <span className="live-dot" />
@@ -35,17 +35,16 @@ export default function RecommendationsPage() {
           detail="Prioritized by merchant impact"
         />
         <MetricCard
-          label="Estimated readiness increase"
-          value="+18"
-          unit="points"
-          detail="From all recommended changes"
-        />
-        <MetricCard
           label="High impact"
-          value={String(5 - resolved.length)}
+          value={String(Math.max(0, 5 - resolved.length))}
           detail="Address these recommendations first"
         />
         <MetricCard label="Quick wins" value="4" detail="Less than one day to implement" />
+        <MetricCard
+          label="Verified fixes"
+          value={String(verified.length)}
+          detail="Passed scenario reruns"
+        />
       </div>
       <div className="recommendations-layout">
         <div>
@@ -113,10 +112,9 @@ export default function RecommendationsPage() {
             <span className="icon-box green">
               <CheckCheck size={19} />
             </span>
-            <h3>Close the loop with verification</h3>
+            <h3>Verify before closing</h3>
             <p>
-              After applying a fix, run the same shopping scenarios again. Verify the outcome before
-              closing the issue.
+              A recommendation moves to Resolved only after the same shopping scenarios pass again.
             </p>
             <ol>
               <li>
@@ -126,7 +124,10 @@ export default function RecommendationsPage() {
                 <span>2</span>Apply the merchant-side fix
               </li>
               <li>
-                <span>3</span>Run a verification
+                <span>3</span>Rerun the same scenarios
+              </li>
+              <li>
+                <span>4</span>Confirm the result
               </li>
             </ol>
           </Card>
