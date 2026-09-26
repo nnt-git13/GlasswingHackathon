@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Bell,
   BookOpen,
+  Bot,
   Building2,
   ChartNoAxesCombined,
   Check,
@@ -20,6 +21,7 @@ import {
   Mountain,
   Plug,
   ScanLine,
+  Search,
   Settings2,
   ShieldCheck,
   Terminal,
@@ -27,11 +29,14 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { signOut } from '@/app/auth/actions';
 import { useApp } from './app-provider';
 const navigation = [
+  { href: '/discover', label: 'Discover', icon: Search },
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/scan', label: 'Readiness Scan', icon: ScanLine },
+  { href: '/agent-scan', label: 'Live Agent Scan', icon: Bot },
   { href: '/sessions', label: 'Sessions', icon: Activity },
   { href: '/security', label: 'Security', icon: ShieldCheck },
   { href: '/replays', label: 'Replays', icon: CirclePlay },
@@ -217,6 +222,19 @@ export function ScanButton({ outline = false }: { outline?: boolean }) {
 }
 export function TopNavigation({ onMenu }: { onMenu: () => void }) {
   const [notifications, setNotifications] = useState(false);
+  const [identity, setIdentity] = useState('Your account');
+  const { notify } = useApp();
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/account', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const account = await response.json();
+        setIdentity(account.profile.full_name || account.user.email);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   return (
     <header className="top-navigation">
       <button className="mobile-menu" onClick={onMenu} aria-label="Open navigation">
@@ -244,16 +262,32 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
           align="end"
           trigger={
             <button className="user-menu">
-              <span className="avatar">JD</span>
+              <span className="avatar">
+                {identity
+                  .split(/\s+/)
+                  .map((part) => part[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()}
+              </span>
               <span>
-                <strong>{productConfig.user}</strong>
-                <small>{productConfig.role}</small>
+                <strong>{identity}</strong>
+                <small>Member</small>
               </span>
               <ChevronDown size={12} />
             </button>
           }
         >
-          <div className="dropdown-label">{productConfig.user}</div>
+          <div className="dropdown-label">{identity}</div>
+          <DropdownItem
+            onSelect={() => {
+              void signOut().then((result) => {
+                if (result?.error) notify(result.error);
+              });
+            }}
+          >
+            Sign out
+          </DropdownItem>
           <DropdownItem onSelect={() => window.location.assign('/settings')}>
             <Settings2 size={14} />
             Workspace settings
@@ -306,6 +340,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/integrations', label: 'Integrations' },
     { href: '/settings', label: 'Settings' },
   ].find((x) => pathname.startsWith(x.href));
+  if (
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/discover' ||
+    pathname.startsWith('/auth/')
+  )
+    return <>{children}</>;
   return (
     <>
       <a href="#main-content" className="skip-link">
