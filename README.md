@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). The root redirects to `/dashboard`.
+Open [localhost:3000](http://localhost:3000) for the login page (also available at `/login`). Create an account at `/signup`, confirm your email, then sign in. Supabase configuration is required; protected routes stay inaccessible when it is absent. See [Supabase setup](supabase/README.md).
 
 ```bash
 npm run typecheck
@@ -43,7 +43,7 @@ Try **Run Scan**, select a numbered storefront issue, filter for a blocked sessi
 - `components/dashboard/`, `scans/`, `sessions/`, `security/`, `recommendations/`, `charts/`: Reusable domain components.
 - `components/ui/`: shadcn-style primitives built with Radix UI, CVA, and Tailwind utilities.
 - `lib/types/`: Typed merchant, scan, finding, recommendation, session/event, policy, agent, and readiness contracts.
-- `lib/mock-data/`: Separate fixtures for each product domain; no backend or authentication.
+- `lib/mock-data/`: Separate fixtures for commerce demo data; authentication uses Supabase.
 - `public/`: Local storefront photography, so previews do not depend on external image requests.
 - `tests/`: Playwright coverage of the main demo workflows and responsive layouts.
 
@@ -53,7 +53,7 @@ Rename the product in `lib/mock-data/merchant.ts` (`productConfig`). This is als
 
 ## Frontend-only behavior
 
-Scan and verification runs use short deterministic timers. Policies and recommendation state survive client-side route navigation; all demo changes reset on a page reload. Integration and settings configuration is held in component state. No merchant websites, commerce APIs, credentials, payment systems, or notification services are contacted. The CLI command is illustrative.
+Scan and verification runs use short deterministic timers. Policies and recommendation state survive client-side route navigation; all demo changes reset on a page reload. Integration and settings configuration is held in component state. No merchant websites, commerce APIs, payment systems, or notification services are contacted. The CLI command is illustrative.
 
 Analytics charts use generated fixtures for the selected period. Agent distribution and failure-mode tables explicitly display the latest 1,248-session snapshot. The sessions table contains 11 representative sessions from that larger workspace summary. Recommendations expose five prioritized examples from the 12-item summary.
 
@@ -65,6 +65,8 @@ Start the app on port 3000, then:
 npx playwright install chromium
 npm run test:e2e
 ```
+
+Authentication tests run without an account. Set `GATEWAY_TEST_EMAIL` and `GATEWAY_TEST_PASSWORD` to enable the live account test after applying the migration. Workspace tests require `GATEWAY_TEST_STORAGE_STATE` pointing to a Playwright storage-state file from a signed-in test account; otherwise they are skipped. Keep test credentials and session files outside version control.
 
 The Playwright configuration uses the preinstalled Chromium binary in this workspace when available, and otherwise uses Playwright's managed browser. Tests cover all routes, scans, filters, exports, replay tabs/playback, annotation selection, policy creation/editing, verification, integrations, not-found handling, and tablet/mobile overflow. Screenshots are generated in `test-results/`.
 
