@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+test.use({ storageState: process.env.GATEWAY_TEST_STORAGE_STATE });
+test.beforeEach(() => {
+  test.skip(
+    !process.env.GATEWAY_TEST_STORAGE_STATE,
+    'Workspace tests require an authenticated Supabase storage state.',
+  );
+});
+
 test('all demo routes render without client errors and primary surfaces are captured', async ({
   page,
 }) => {
