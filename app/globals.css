@@ -5516,6 +5516,18 @@ svg {
   min-width: 0;
   padding-right: 6px;
 }
+.metric-scope-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.metric-scope {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 550;
+  white-space: nowrap;
+}
 .task-success-value-row {
   display: flex;
   align-items: flex-end;

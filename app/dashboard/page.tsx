@@ -4,7 +4,6 @@ import { FindingRow } from '@/components/dashboard/finding-row';
 import { ReadinessCard } from '@/components/dashboard/readiness-card';
 import { ScoreRing } from '@/components/dashboard/score-ring';
 import { useApp } from '@/components/layout/app-provider';
-import { ScanButton } from '@/components/layout/app-shell';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, CardHeader } from '@/components/ui/primitives';
 import { merchant } from '@/lib/mock-data/merchant';
@@ -25,7 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 export default function Dashboard() {
-  const { lastScanned, scanNumber, environment } = useApp();
+  const { scanNumber, environment } = useApp();
   const successRate = sessionSummary.find((metric) => metric.label === 'Success rate');
   const sessionsRun = sessionSummary.find((metric) => metric.label === 'Sessions run');
   const checkoutFailures = sessionSummary.find((metric) => metric.label === 'Checkout failures');
@@ -37,15 +36,6 @@ export default function Dashboard() {
       <PageHeading
         title="Good morning, Jordan"
         subtitle="Here's how evertrailoutdoors.com is performing for autonomous shoppers."
-        action={
-          <>
-            <div className="last-scanned">
-              <span>Last scanned</span>
-              <strong>{lastScanned}</strong>
-            </div>
-            <ScanButton outline />
-          </>
-        }
       />
       <Card className="commerce-health">
         <CardHeader
@@ -66,7 +56,10 @@ export default function Dashboard() {
         />
         <div className="commerce-health-body">
           <section className="task-success-hero" aria-labelledby="task-success-heading">
-            <span className="eyebrow">AGENT TASK SUCCESS</span>
+            <div className="metric-scope-row">
+              <span className="eyebrow">AGENT TASK SUCCESS</span>
+              <span className="metric-scope">Last 7 days</span>
+            </div>
             <div className="task-success-value-row">
               <strong>{successRate?.value ?? '83.6%'}</strong>
               <span className="positive">
@@ -87,19 +80,19 @@ export default function Dashboard() {
           </section>
 
           <section className="readiness-evidence" aria-labelledby="readiness-evidence-heading">
-            <span className="eyebrow">READINESS EVIDENCE</span>
+            <div className="metric-scope-row">
+              <span className="eyebrow">MERCHANT READINESS</span>
+              <span className="metric-scope">Latest readiness scan</span>
+            </div>
             <div className="readiness-evidence-body">
               <ScoreRing score={74} compact />
               <div className="readiness-evidence-copy">
                 <div className="improvement">
                   <TrendingUp size={13} />
-                  13 points higher than your first scan
+                  +13 points since first scan
                 </div>
-                <h2 id="readiness-evidence-heading">Supporting signal</h2>
-                <p>
-                  Readiness categories explain where merchant-side friction is causing agent
-                  journeys to stall.
-                </p>
+                <h2 id="readiness-evidence-heading">Merchant readiness</h2>
+                <p>Readiness checks explain where merchant-side friction causes agent journeys to stall.</p>
               </div>
             </div>
           </section>
@@ -167,7 +160,7 @@ export default function Dashboard() {
         <div className="overview-card-footer">
           <span>
             <CheckCheck size={13} />
-            86 pages analyzed<span>·</span>48 shopping sessions<span>·</span>5 agent profiles
+            Latest scan · 86 pages · 48 shopping sessions · 5 agent profiles
           </span>
           <Link href="/scan">
             View full scan report
