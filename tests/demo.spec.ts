@@ -85,6 +85,37 @@ test('scan annotations and storefront page selector are interactive', async ({ p
     '/replays/SES-10482',
   );
   await expect(page.locator('.selected-issue')).toContainText('Unclear shipping estimate');
+  await expect(page.getByRole('link', { name: 'Open remediation' })).toHaveAttribute(
+    'href',
+    '/recommendations#REC-004',
+  );
+  await page.getByRole('button', { name: 'Issue 3: Returns policy missing metadata' }).click();
+  await expect(page.getByRole('link', { name: 'Open remediation' })).toHaveAttribute(
+    'href',
+    '/recommendations#REC-005',
+  );
+  await page.getByRole('button', { name: 'Issue 4: Capacity selection ambiguity' }).click();
+  await expect(page.getByRole('link', { name: 'Open remediation' })).toHaveAttribute(
+    'href',
+    '/recommendations#REC-003',
+  );
+  await expect(page.locator('.scan-fixes .suggested-fix')).toHaveCount(4);
+  await expect(page.locator('.scan-fixes .suggested-fix').nth(0)).toHaveAttribute(
+    'href',
+    '/recommendations#REC-001',
+  );
+  await expect(page.locator('.scan-fixes .suggested-fix').nth(1)).toHaveAttribute(
+    'href',
+    '/recommendations#REC-004',
+  );
+  await expect(page.locator('.scan-fixes .suggested-fix').nth(2)).toHaveAttribute(
+    'href',
+    '/recommendations#REC-003',
+  );
+  await expect(page.locator('.scan-fixes .suggested-fix').nth(3)).toHaveAttribute(
+    'href',
+    '/recommendations#REC-005',
+  );
   await page.getByLabel('Preview page').selectOption('Cart');
   await expect(page.getByRole('heading', { name: 'Your cart', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue to checkout' }).click();

@@ -27,6 +27,7 @@ export default function ScanPage() {
   }, []);
   const { scan: latestScan, issues: scanIssues, fixes: scanFixes } = report;
   const criticalCount = scanIssues.filter((issue) => issue.severity === 'Critical').length;
+  const recommendationIds = ['REC-001', 'REC-004', 'REC-003', 'REC-005'] as const;
   return (
     <>
       <PageHeading
@@ -157,7 +158,7 @@ export default function ScanPage() {
             />
             {scanFixes.map((fix, i) => (
               <Link
-                href={`/recommendations#REC-00${i + 1}`}
+                href={`/recommendations#${recommendationIds[i]}`}
                 className="suggested-fix"
                 key={fix.title}
               >

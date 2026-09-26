@@ -18,6 +18,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+const recommendationByIssue: Record<number, string> = {
+  1: 'REC-001',
+  2: 'REC-004',
+  3: 'REC-005',
+  4: 'REC-003',
+};
 export function IssueAnnotation({
   number,
   label,
@@ -355,7 +361,7 @@ export function BrowserPreview({
               <ArrowRight size={12} />
             </Link>
           )}
-          <Link href={`/recommendations#REC-00${selected}`} className="text-link">
+          <Link href={`/recommendations#${recommendationByIssue[selected]}`} className="text-link">
             Open remediation
             <ArrowRight size={12} />
           </Link>
