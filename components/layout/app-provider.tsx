@@ -1,6 +1,7 @@
 'use client';
 import { latestScan } from '@/lib/mock-data/scans';
 import { securityPolicies } from '@/lib/mock-data/security';
+import type { ScannedSite } from '@/lib/agent/types';
 import type { Environment, SecurityPolicy } from '@/lib/types';
 import { CheckCircle2, X } from 'lucide-react';
 import {
@@ -27,6 +28,8 @@ interface AppState {
   resolve: (id: string) => void;
   verified: string[];
   verify: (id: string) => void;
+  scanSite: ScannedSite | null;
+  setScanSite: (site: ScannedSite | null) => void;
 }
 const AppContext = createContext<AppState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -39,6 +42,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [policies, setPolicies] = useState(securityPolicies);
   const [resolved, setResolved] = useState<string[]>([]);
   const [verified, setVerified] = useState<string[]>([]);
+  const [scanSite, setScanSite] = useState<ScannedSite | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const scanLock = useRef(false);
   const notify = useCallback((message: string) => setToast(message), []);
@@ -94,6 +98,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resolve: (id) => setResolved((ids) => (ids.includes(id) ? ids : [...ids, id])),
         verified,
         verify: (id) => setVerified((ids) => (ids.includes(id) ? ids : [...ids, id])),
+        scanSite,
+        setScanSite,
       }}
     >
       {children}
