@@ -73,7 +73,7 @@ export function RecommendationCard({
           {isVerified
             ? 'Verified'
             : isResolved
-              ? 'Resolved · unverified'
+              ? 'Resolved'
               : `${r.impactLevel} impact`}
         </StatusBadge>
         <ChevronDown size={17} className={cn(expanded && 'rotate-180')} />

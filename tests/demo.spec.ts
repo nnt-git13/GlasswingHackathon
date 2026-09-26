@@ -111,6 +111,9 @@ test('session filters, CSV export, selected replay, and timeline tabs', async ({
   ).toBeVisible();
   await page.goto('/replays/SES-10482');
   await expect(page.getByRole('heading', { name: 'Investigation view' })).toBeVisible();
+  await page.getByRole('button', { name: 'Watch visual replay' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Visual replay · SES-10482');
+  await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('heading', { name: 'Requesting shipping' })).toBeVisible();
   await expect(page.getByText('Shipping: 3–5 business days', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Step 3 Comparing products/i }).click();
