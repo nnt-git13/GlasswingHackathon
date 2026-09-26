@@ -17,7 +17,12 @@ import { findings as initialFindings, readinessMetrics } from '@/lib/mock-data/s
 import { getNextSteps } from '@/lib/next-steps';
 import { getReadinessTrend, mockReadinessTrendResult, toChartData } from '@/lib/readiness-trend';
 import { getSecurityMetric } from '@/lib/security';
-import type { Finding, ReadinessMetric, ReadinessTrendScanResult, Recommendation } from '@/lib/types';
+import type {
+  Finding,
+  ReadinessMetric,
+  ReadinessTrendScanResult,
+  Recommendation,
+} from '@/lib/types';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -156,10 +161,14 @@ export default function Dashboard() {
               <div className="readiness-evidence-copy">
                 <div className="improvement">
                   <TrendingUp size={13} />
-                  {trendChange >= 0 ? '+' : ''}{trendChange} points since first scan
+                  {trendChange >= 0 ? '+' : ''}
+                  {trendChange} points since first scan
                 </div>
                 <h2 id="readiness-evidence-heading">Merchant readiness</h2>
-                <p>Readiness checks explain where merchant-side friction causes agent journeys to stall.</p>
+                <p>
+                  Readiness checks explain where merchant-side friction causes agent journeys to
+                  stall.
+                </p>
               </div>
             </div>
           </section>
@@ -214,7 +223,8 @@ export default function Dashboard() {
             <span>Checkout failures</span>
             <strong>{checkoutFailures?.value ?? '71'}</strong>
             <small>
-              {checkoutFailures?.change ?? '−12.3%'} {checkoutFailures?.detail ?? 'vs. previous 7 days'}
+              {checkoutFailures?.change ?? '−12.3%'}{' '}
+              {checkoutFailures?.detail ?? 'vs. previous 7 days'}
             </small>
           </div>
           <div>
@@ -300,9 +310,7 @@ export default function Dashboard() {
           <CardHeader
             title="Recommended next steps"
             action={
-              <span className="subtle-badge">
-                {Math.min(4, recommendations.length)} actions
-              </span>
+              <span className="subtle-badge">{Math.min(4, recommendations.length)} actions</span>
             }
           />
           <p className="next-steps-description">Small changes. More successful shoppers.</p>

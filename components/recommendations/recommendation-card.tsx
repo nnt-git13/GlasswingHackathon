@@ -144,7 +144,9 @@ export function RecommendationCard({
       {isVerified && (
         <div className="verification-result">
           <CheckCheck size={14} />
-          <span>Verification passed · same 12 shopping scenarios · 12/12 passed · 0 regressions</span>
+          <span>
+            Verification passed · same 12 shopping scenarios · 12/12 passed · 0 regressions
+          </span>
           <span>Just now</span>
         </div>
       )}
@@ -180,8 +182,8 @@ export function RecommendationCard({
           <div className="info-panel">
             <FileCode2 size={16} />
             <span>
-              Apply this example to your storefront, then rerun the same scenarios. The demo verifies
-              against simulated data.
+              Apply this example to your storefront, then rerun the same scenarios. The demo
+              verifies against simulated data.
             </span>
           </div>
           <div className="dialog-actions">

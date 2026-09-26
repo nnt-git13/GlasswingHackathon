@@ -140,7 +140,15 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
                     setFocusEventId(event.id);
                   }}
                 >
-                  <span className={event.type === 'warning' ? 'warning' : event.type === 'complete' ? 'success' : ''}>
+                  <span
+                    className={
+                      event.type === 'warning'
+                        ? 'warning'
+                        : event.type === 'complete'
+                          ? 'success'
+                          : ''
+                    }
+                  >
                     {event.id}
                   </span>
                   <span>
@@ -165,7 +173,11 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
                 <code>evertrailoutdoors.com</code>
               </div>
               <div className="storefront-browser-body">
-                <div className="replay-product-image" role="img" aria-label="Summit Trail 45L backpack" />
+                <div
+                  className="replay-product-image"
+                  role="img"
+                  aria-label="Summit Trail 45L backpack"
+                />
                 <div className="replay-storefront-copy">
                   <small>{visualState.eyebrow}</small>
                   <h3 id="storefront-state-title">{visualState.title}</h3>
@@ -462,7 +474,6 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
   );
 }
 
-
 function getReplayVisualState(eventId: number) {
   if (eventId <= 2)
     return {
@@ -470,7 +481,8 @@ function getReplayVisualState(eventId: number) {
       eyebrow: 'BACKPACK COLLECTION',
       title: '3 relevant products',
       value: '$129–$259',
-      detail: 'The agent can see ratings, prices, and basic product metadata before narrowing the set.',
+      detail:
+        'The agent can see ratings, prices, and basic product metadata before narrowing the set.',
     };
   if (eventId <= 4)
     return {
@@ -507,20 +519,22 @@ function getReplayVisualState(eventId: number) {
 }
 
 function getReplayDiagnosis(event?: ReturnType<typeof getSessionEvents>[number]) {
-  if (!event)
-    return { expected: '', observed: '', rootCause: '', fix: '' };
+  if (!event) return { expected: '', observed: '', rootCause: '', fix: '' };
   if (event.type === 'warning')
     return {
       expected: 'A destination-aware delivery estimate before the agent relies on shipping timing.',
-      observed: 'The storefront returned “3–5 business days” without first collecting a destination.',
-      rootCause: 'Shipping policy data is not conditioned on destination, so delivery eligibility cannot be verified.',
+      observed:
+        'The storefront returned “3–5 business days” without first collecting a destination.',
+      rootCause:
+        'Shipping policy data is not conditioned on destination, so delivery eligibility cannot be verified.',
       fix: 'Require a destination before returning delivery timing, then expose the resulting estimate in machine-readable policy data.',
     };
   if (event.type === 'promo')
     return {
       expected: 'Apply only promotions authorized by the shopper’s intent and merchant policy.',
       observed: event.summary,
-      rootCause: 'The promotion was ineligible; the policy layer correctly prevented an unrequested retry.',
+      rootCause:
+        'The promotion was ineligible; the policy layer correctly prevented an unrequested retry.',
       fix: 'No remediation required. Preserve the current control and keep the decision in the audit trace.',
     };
   return {

@@ -5901,8 +5901,7 @@ svg {
 .portal-shell {
   min-height: 100vh;
   background:
-    radial-gradient(1100px 420px at 50% -140px, #eaf1fd 0%, transparent 70%),
-    var(--background);
+    radial-gradient(1100px 420px at 50% -140px, #eaf1fd 0%, transparent 70%), var(--background);
 }
 .portal-page {
   max-width: 940px;
@@ -6639,7 +6638,6 @@ svg {
     grid-template-columns: 1fr;
   }
 }
-
 
 /* Replay: keep policy context visible while inspecting the full trace */
 @media (min-width: 1051px) {

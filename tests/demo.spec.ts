@@ -42,7 +42,6 @@ test('all demo routes render without client errors and primary surfaces are capt
   expect(errors).toEqual([]);
 });
 
-
 test('dashboard separates rolling outcomes from the latest readiness scan', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByText('Last 7 days', { exact: true })).toBeVisible();
@@ -118,7 +117,9 @@ test('session filters, CSV export, selected replay, and timeline tabs', async ({
   await expect(page.getByRole('heading', { name: 'Comparing products' })).toBeVisible();
   await expect(page.getByText('No merchant-side failure was detected at this step.')).toBeVisible();
   await page.getByRole('button', { name: /Step 4 Requesting shipping/i }).click();
-  await expect(page.getByText('destination-aware delivery estimate', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('destination-aware delivery estimate', { exact: false }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Safety controls held' })).toBeVisible();
   await page.getByRole('tab', { name: 'Requests', exact: true }).click();
   await expect(page.locator('.request-list')).toContainText('GET /collections/backpacks');

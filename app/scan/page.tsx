@@ -131,9 +131,7 @@ export default function ScanPage() {
             <div className="scan-score-body">
               <ScoreRing score={74} compact />
               <div>
-                <h3>
-                  Supporting signal
-                </h3>
+                <h3>Supporting signal</h3>
                 <p>Readiness summarizes the merchant-side friction surfaced by this run.</p>
                 <span className="positive">↗ +4 since previous scan</span>
               </div>
@@ -145,7 +143,11 @@ export default function ScanPage() {
               action={<span className="subtle-badge">4 fixes</span>}
             />
             {scanFixes.map((fix, i) => (
-              <Link href={`/recommendations#REC-00${i + 1}`} className="suggested-fix" key={fix.title}>
+              <Link
+                href={`/recommendations#REC-00${i + 1}`}
+                className="suggested-fix"
+                key={fix.title}
+              >
                 <span>{i + 1}</span>
                 <div>
                   <strong>{fix.title}</strong>
