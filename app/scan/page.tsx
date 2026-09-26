@@ -1,7 +1,6 @@
 'use client';
 import { ScoreRing } from '@/components/dashboard/score-ring';
 import { useApp } from '@/components/layout/app-provider';
-import { ScanButton } from '@/components/layout/app-shell';
 import { BrowserPreview } from '@/components/scans/browser-preview';
 import { ScanPhaseStepper } from '@/components/scans/scan-phase-stepper';
 import { PageHeading } from '@/components/ui/page-heading';
@@ -14,21 +13,12 @@ import { useState } from 'react';
 export default function ScanPage() {
   const [selected, setSelected] = useState(1);
   const [phase, setPhase] = useState<string | null>(null);
-  const { lastScanned, environment, scanNumber } = useApp();
+  const { environment, scanNumber } = useApp();
   return (
     <>
       <PageHeading
-        title="Readiness Scan Results"
-        subtitle="Detailed analysis of how autonomous shoppers interact with your storefront."
-        action={
-          <>
-            <div className="last-scanned">
-              <span>Last scanned</span>
-              <strong>{lastScanned}</strong>
-            </div>
-            <ScanButton outline />
-          </>
-        }
+        title="Agent Test Run"
+        subtitle="Observe how autonomous shoppers move through the storefront, where they break, and what to fix next."
       />
       <div className="scan-run-meta">
         <StatusBadge>Completed</StatusBadge>
@@ -47,6 +37,55 @@ export default function ScanPage() {
         </span>
         <span>5 agent profiles tested</span>
       </div>
+      <Card className="agent-test-run">
+        <div className="agent-test-summary">
+          <span className="eyebrow">RUN OUTCOME</span>
+          <div className="agent-test-value">
+            <strong>{latestScan.sessions}</strong>
+            <span>shopping sessions tested</span>
+          </div>
+          <p>
+            5 agent profiles exercised {latestScan.pages} storefront pages in {latestScan.duration}.
+          </p>
+          <div className="agent-test-metrics">
+            <span>
+              <strong>{scanIssues.length}</strong>
+              priority findings
+            </span>
+            <span>
+              <strong>{scanIssues.filter((issue) => issue.severity === 'Critical').length}</strong>
+              critical
+            </span>
+            <span>
+              <strong>{latestScan.phases.reduce((sum, item) => sum + item.issues, 0)}</strong>
+              checks need attention
+            </span>
+          </div>
+        </div>
+        <div className="agent-test-stages" aria-label="Completed test run stages">
+          {[
+            'Generate shopper goals',
+            'Launch agent profiles',
+            'Exercise storefront',
+            'Evaluate outcomes',
+            'Generate findings',
+          ].map((stage, index) => (
+            <div key={stage}>
+              <span>
+                <CheckCircle2 size={14} />
+              </span>
+              <div>
+                <small>STEP {index + 1}</small>
+                <strong>{stage}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div className="section-label scan-evidence-label">
+        <h2>Readiness evidence by surface</h2>
+        <span>Click a surface to inspect what needs attention</span>
+      </div>
       <ScanPhaseStepper selected={phase} onSelect={setPhase} />
       {phase && (
         <div className="phase-detail">
@@ -63,23 +102,6 @@ export default function ScanPage() {
       <div className="scan-layout">
         <BrowserPreview selected={selected} onSelect={setSelected} />
         <div className="scan-right-column">
-          <Card className="scan-score-card">
-            <CardHeader
-              title="Overall readiness score"
-              action={<span className="subtle-badge">Scan #{scanNumber}</span>}
-            />
-            <div className="scan-score-body">
-              <ScoreRing score={74} compact />
-              <div>
-                <h3>
-                  Good foundation —<br />
-                  room to improve
-                </h3>
-                <p>Resolve priority issues to make shopping sessions more reliable.</p>
-                <span className="positive">↗ +4 since previous scan</span>
-              </div>
-            </div>
-          </Card>
           <Card className="issues-card">
             <CardHeader
               title="Issues detected"
@@ -110,13 +132,29 @@ export default function ScanPage() {
               </button>
             ))}
           </Card>
+          <Card className="scan-score-card">
+            <CardHeader
+              title="Merchant readiness"
+              action={<span className="subtle-badge">Scan #{scanNumber}</span>}
+            />
+            <div className="scan-score-body">
+              <ScoreRing score={74} compact />
+              <div>
+                <h3>
+                  Supporting signal
+                </h3>
+                <p>Readiness summarizes the merchant-side friction surfaced by this run.</p>
+                <span className="positive">↗ +4 since previous scan</span>
+              </div>
+            </div>
+          </Card>
           <Card className="scan-fixes">
             <CardHeader
               title="Suggested fixes"
               action={<span className="subtle-badge">4 fixes</span>}
             />
             {scanFixes.map((fix, i) => (
-              <Link href="/recommendations" className="suggested-fix" key={fix.title}>
+              <Link href={`/recommendations#REC-00${i + 1}`} className="suggested-fix" key={fix.title}>
                 <span>{i + 1}</span>
                 <div>
                   <strong>{fix.title}</strong>

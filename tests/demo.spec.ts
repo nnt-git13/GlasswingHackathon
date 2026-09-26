@@ -7,7 +7,7 @@ test('all demo routes render without client errors and primary surfaces are capt
   page.on('pageerror', (e) => errors.push(e.message));
   for (const [route, heading] of [
     ['dashboard', 'Good morning, Jordan'],
-    ['scan', 'Readiness Scan Results'],
+    ['scan', 'Agent Test Run'],
     ['sessions', 'Shopping Sessions'],
     ['replays/SES-10482', 'Agent Replay'],
     ['security', 'Security'],
@@ -69,7 +69,14 @@ test('shell dropdowns, scan lifecycle, and finding expansion', async ({ page }) 
 
 test('scan annotations and storefront page selector are interactive', async ({ page }) => {
   await page.goto('/scan');
+  await expect(page.getByText('shopping sessions tested', { exact: true })).toBeVisible();
+  await expect(page.getByText('Generate shopper goals', { exact: true })).toBeVisible();
+  await expect(page.getByText('Generate findings', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Issue 2: Unclear shipping estimate' }).click();
+  await expect(page.getByRole('link', { name: /View supporting journey/ })).toHaveAttribute(
+    'href',
+    '/replays/SES-10482',
+  );
   await expect(page.locator('.selected-issue')).toContainText('Unclear shipping estimate');
   await page.getByLabel('Preview page').selectOption('Cart');
   await expect(page.getByRole('heading', { name: 'Your cart', exact: true })).toBeVisible();

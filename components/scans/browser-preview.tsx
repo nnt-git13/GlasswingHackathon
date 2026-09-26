@@ -16,6 +16,7 @@ import {
   Star,
   Truck,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 export function IssueAnnotation({
   number,
@@ -343,9 +344,21 @@ export function BrowserPreview({
       </div>
       <div className="selected-issue">
         <span className="issue-number">{selected}</span>
-        <div>
+        <div className="selected-issue-copy">
           <strong>{scanIssues.find((i) => i.id === selected)?.title}</strong>
           <p>{scanIssues.find((i) => i.id === selected)?.description}</p>
+        </div>
+        <div className="selected-issue-actions">
+          {selected === 2 && (
+            <Link href="/replays/SES-10482" className="text-link">
+              View supporting journey
+              <ArrowRight size={12} />
+            </Link>
+          )}
+          <Link href={`/recommendations#REC-00${selected}`} className="text-link">
+            Open remediation
+            <ArrowRight size={12} />
+          </Link>
         </div>
       </div>
       <div className="browser-annotation-legend">
