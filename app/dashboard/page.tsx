@@ -9,6 +9,7 @@ import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, CardHeader } from '@/components/ui/primitives';
 import { merchant } from '@/lib/mock-data/merchant';
 import { recommendations } from '@/lib/mock-data/recommendations';
+import { agents, sessionSummary } from '@/lib/mock-data/sessions';
 import { findings, readinessMetrics } from '@/lib/mock-data/scans';
 import {
   ArrowRight,
@@ -25,6 +26,12 @@ import {
 import Link from 'next/link';
 export default function Dashboard() {
   const { lastScanned, scanNumber, environment } = useApp();
+  const successRate = sessionSummary.find((metric) => metric.label === 'Success rate');
+  const sessionsRun = sessionSummary.find((metric) => metric.label === 'Sessions run');
+  const checkoutFailures = sessionSummary.find((metric) => metric.label === 'Checkout failures');
+  const policyBlocks = sessionSummary.find(
+    (metric) => metric.label === 'Policy violations blocked',
+  );
   return (
     <>
       <PageHeading
@@ -40,9 +47,9 @@ export default function Dashboard() {
           </>
         }
       />
-      <Card className="readiness-overview">
+      <Card className="commerce-health">
         <CardHeader
-          title="Agent readiness overview"
+          title="Autonomous commerce health"
           icon={
             <span className="section-icon">
               <ActivityIcon />
@@ -57,33 +64,46 @@ export default function Dashboard() {
             </span>
           }
         />
-        <div className="readiness-overview-body">
-          <ScoreRing score={74} />
-          <div className="readiness-summary">
-            <div className="improvement">
-              <TrendingUp size={13} />
-              13 points higher than your first scan
+        <div className="commerce-health-body">
+          <section className="task-success-hero" aria-labelledby="task-success-heading">
+            <span className="eyebrow">AGENT TASK SUCCESS</span>
+            <div className="task-success-value-row">
+              <strong>{successRate?.value ?? '83.6%'}</strong>
+              <span className="positive">
+                <TrendingUp size={13} />
+                {successRate?.change ?? '+4.8%'}
+                <span>vs. previous 7 days</span>
+              </span>
             </div>
-            <h2>Good foundation — room to improve</h2>
+            <h2 id="task-success-heading">Most autonomous shoppers are completing their goals.</h2>
             <p>
-              Your site is mostly accessible to autonomous shoppers, but several product, checkout,
-              and policy issues may reduce successful purchases.
+              Use session outcomes as the primary signal, then trace failures back to merchant-side
+              readiness issues.
             </p>
-            <div className="readiness-legend">
-              <span>
-                <i className="green" />
-                Mostly ready
-              </span>
-              <span>
-                <i className="amber" />
-                Needs work
-              </span>
-              <span>
-                <i className="blue" />
-                High opportunity
-              </span>
+            <Link href="/sessions" className="text-link task-success-link">
+              Explore shopping sessions
+              <ArrowRight size={13} />
+            </Link>
+          </section>
+
+          <section className="readiness-evidence" aria-labelledby="readiness-evidence-heading">
+            <span className="eyebrow">READINESS EVIDENCE</span>
+            <div className="readiness-evidence-body">
+              <ScoreRing score={74} compact />
+              <div className="readiness-evidence-copy">
+                <div className="improvement">
+                  <TrendingUp size={13} />
+                  13 points higher than your first scan
+                </div>
+                <h2 id="readiness-evidence-heading">Supporting signal</h2>
+                <p>
+                  Readiness categories explain where merchant-side friction is causing agent
+                  journeys to stall.
+                </p>
+              </div>
             </div>
-          </div>
+          </section>
+
           <div className="merchant-preview">
             <div className="merchant-photo">
               <div className="merchant-photo-overlay">
@@ -118,6 +138,32 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        <div className="commerce-health-metrics" aria-label="Operational evidence">
+          <div>
+            <span>Sessions run</span>
+            <strong>{sessionsRun?.value ?? '1,248'}</strong>
+            <small>{sessionsRun?.detail ?? 'vs. previous 7 days'}</small>
+          </div>
+          <div>
+            <span>Agent profiles</span>
+            <strong>{agents.length}</strong>
+            <small>Across synthetic shopper types</small>
+          </div>
+          <div>
+            <span>Checkout failures</span>
+            <strong>{checkoutFailures?.value ?? '71'}</strong>
+            <small>
+              {checkoutFailures?.change ?? '−12.3%'} {checkoutFailures?.detail ?? 'vs. previous 7 days'}
+            </small>
+          </div>
+          <div>
+            <span>Policy violations blocked</span>
+            <strong>{policyBlocks?.value ?? '38'}</strong>
+            <small>{policyBlocks?.detail ?? 'Across all agent profiles'}</small>
+          </div>
+        </div>
+
         <div className="overview-card-footer">
           <span>
             <CheckCheck size={13} />
@@ -130,7 +176,7 @@ export default function Dashboard() {
         </div>
       </Card>
       <div className="section-label">
-        <h2>Readiness by category</h2>
+        <h2>Readiness evidence by category</h2>
         <span>Compared with previous scan</span>
       </div>
       <div className="readiness-grid">

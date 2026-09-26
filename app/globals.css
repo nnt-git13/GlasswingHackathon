@@ -5497,3 +5497,201 @@ svg {
   font-size: 10px;
   box-shadow: 0 2px 8px #293a4610;
 }
+
+/* Dashboard: autonomous commerce health hierarchy */
+.commerce-health {
+  overflow: hidden;
+}
+.commerce-health .card-header {
+  padding-bottom: 4px;
+}
+.commerce-health-body {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.3fr) minmax(300px, 1fr) 280px;
+  gap: 26px;
+  align-items: center;
+  padding: 18px 24px 24px;
+}
+.task-success-hero {
+  min-width: 0;
+  padding-right: 6px;
+}
+.task-success-value-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.task-success-value-row > strong {
+  color: #1f2b3d;
+  font-size: 52px;
+  font-weight: 650;
+  letter-spacing: -2.7px;
+  line-height: 1;
+}
+.task-success-value-row .positive {
+  margin-bottom: 6px;
+}
+.task-success-value-row .positive > span {
+  color: var(--muted);
+  font-weight: 450;
+}
+.task-success-hero h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.25px;
+  line-height: 1.45;
+  margin-top: 16px;
+}
+.task-success-hero p {
+  color: #6c7481;
+  font-size: 12px;
+  line-height: 1.75;
+  margin-top: 7px;
+  max-width: 520px;
+}
+.task-success-link {
+  font-weight: 550;
+  margin-top: 14px;
+}
+.readiness-evidence {
+  min-width: 0;
+  border-left: 1px solid #edf0f5;
+  padding-left: 24px;
+}
+.readiness-evidence-body {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 15px;
+  align-items: center;
+  margin-top: 12px;
+}
+.readiness-evidence-copy .improvement {
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.readiness-evidence-copy h2 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+.readiness-evidence-copy p {
+  color: #737b88;
+  font-size: 10.5px;
+  line-height: 1.7;
+  margin-top: 5px;
+}
+.commerce-health-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: #fbfcfe;
+  border-top: 1px solid #edf0f5;
+}
+.commerce-health-metrics > div {
+  min-width: 0;
+  padding: 14px 20px;
+}
+.commerce-health-metrics > div + div {
+  border-left: 1px solid #edf0f5;
+}
+.commerce-health-metrics span,
+.commerce-health-metrics small {
+  display: block;
+}
+.commerce-health-metrics span {
+  color: #737d8d;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+}
+.commerce-health-metrics strong {
+  display: block;
+  color: #26354b;
+  font-size: 20px;
+  font-weight: 620;
+  letter-spacing: -0.5px;
+  margin-top: 6px;
+}
+.commerce-health-metrics small {
+  color: #858d99;
+  font-size: 9.5px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+
+@media (max-width: 1279px) {
+  .commerce-health-body {
+    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr);
+  }
+  .commerce-health-body > .merchant-preview {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1050px) {
+  .commerce-health-body {
+    grid-template-columns: 1fr;
+  }
+  .readiness-evidence {
+    border-left: 0;
+    border-top: 1px solid #edf0f5;
+    padding-left: 0;
+    padding-top: 20px;
+  }
+  .commerce-health-body > .merchant-preview {
+    grid-column: auto;
+  }
+  .commerce-health-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .commerce-health-metrics > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid #edf0f5;
+  }
+  .commerce-health-metrics > div:nth-child(4) {
+    border-top: 1px solid #edf0f5;
+  }
+}
+
+@media (max-width: 560px) {
+  .commerce-health-body {
+    gap: 18px;
+    padding: 16px 14px 18px;
+  }
+  .commerce-health .card-header {
+    padding: 15px 14px 2px;
+  }
+  .task-success-value-row > strong {
+    font-size: 42px;
+    letter-spacing: -2px;
+  }
+  .task-success-value-row .positive {
+    margin-bottom: 3px;
+  }
+  .task-success-hero h2 {
+    font-size: 13px;
+  }
+  .task-success-hero p {
+    font-size: 10.5px;
+  }
+  .readiness-evidence-body {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .commerce-health-metrics > div {
+    padding: 12px 13px;
+  }
+  .commerce-health-metrics strong {
+    font-size: 18px;
+  }
+  .commerce-health-metrics span {
+    font-size: 8.5px;
+  }
+  .commerce-health-metrics small {
+    font-size: 8.5px;
+  }
+}
+
