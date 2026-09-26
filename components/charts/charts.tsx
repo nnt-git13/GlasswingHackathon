@@ -45,11 +45,15 @@ export function ChartCard({
     </Card>
   );
 }
-export function ReadinessTrendChart() {
+export function ReadinessTrendChart({
+  data = readinessTrend,
+}: {
+  data?: { name: string; score: number; target: number }[];
+}) {
   return (
     <div className="trend-chart">
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <ComposedChart data={readinessTrend} margin={{ top: 12, right: 14, left: -30, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 12, right: 14, left: -30, bottom: 0 }}>
           <defs>
             <linearGradient id="readinessFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#3976ed" stopOpacity={0.13} />

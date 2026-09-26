@@ -50,6 +50,21 @@ export function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
           style={{ width: `${metric.score}%` }}
         />
       </div>
+      {metric.meta && (
+        <div className="readiness-meta">
+          <span className="readiness-meta-total">
+            {metric.meta.passing} / {metric.meta.total} {metric.meta.unitLabel}
+          </span>
+          {metric.meta.breakdown?.map((b) => (
+            <div key={b.name} className="readiness-meta-row">
+              <span>{b.name}</span>
+              <span>
+                {b.passing}/{b.total}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
