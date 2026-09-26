@@ -7,7 +7,14 @@ const icons = {
   security: ShieldCheck,
   compatibility: Puzzle,
 };
-export function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
+export function ReadinessCard({
+  metric,
+}: {
+  metric: Omit<ReadinessMetric, 'score' | 'change'> & {
+    score: number | null;
+    change: number | null;
+  };
+}) {
   const Icon = icons[metric.icon];
   return (
     <Card className="readiness-card">
@@ -30,12 +37,15 @@ export function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
         </StatusBadge>
       </div>
       <div className="readiness-value">
-        {metric.score}
-        <span>%</span>
-        <span className="readiness-change">
-          <ArrowUpRight size={12} />
-          {metric.change}%
-        </span>
+        {metric.score ?? '—'}
+        {metric.score !== null && <span>%</span>}
+        {metric.change !== null && (
+          <span className="readiness-change">
+            <ArrowUpRight size={12} />
+            {metric.change > 0 ? '+' : ''}
+            {metric.change} pp
+          </span>
+        )}
       </div>
       <p>{metric.description}</p>
       <div className="progress-track">
@@ -47,7 +57,7 @@ export function ReadinessCard({ metric }: { metric: ReadinessMetric }) {
                 ? 'rose'
                 : 'amber'
           }
-          style={{ width: `${metric.score}%` }}
+          style={{ width: `${metric.score ?? 0}%` }}
         />
       </div>
       {metric.meta && (

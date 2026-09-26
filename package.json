@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:backend": "playwright test tests/gateway/",
+    "test:bridge": "playwright test --config playwright.bridge.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.0",
@@ -19,12 +21,15 @@
     "@supabase/supabase-js": "^2.117.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "ipaddr.js": "^2.5.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.0",
+    "playwright": "^1.63.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "recharts": "^2.15.0",
-    "tailwind-merge": "^3.0.0"
+    "tailwind-merge": "^3.0.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",

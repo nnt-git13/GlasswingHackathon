@@ -64,12 +64,13 @@ test('live account can sign in, read its profile, and sign out', async ({ page }
   await page.getByLabel('Work email').fill(process.env.GATEWAY_TEST_EMAIL!);
   await page.getByLabel('Password', { exact: true }).fill(process.env.GATEWAY_TEST_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page).toHaveURL('/dashboard', { timeout: 20000 });
+  await expect(page).toHaveURL('/discover', { timeout: 20000 });
   const response = await page.request.get('/api/account');
   expect(response.ok()).toBe(true);
   const account = await response.json();
   expect(account.user.email).toBe(process.env.GATEWAY_TEST_EMAIL);
   expect(account.profile.id).toBe(account.user.id);
+  await page.goto('/dashboard');
   await page.locator('.user-menu').click();
   await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL('/login');

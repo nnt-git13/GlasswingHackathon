@@ -5,9 +5,7 @@ import { supabaseConfig } from '@/lib/supabase/config';
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const publicPage =
-    ['/', '/login', '/signup', '/discover'].includes(path) ||
-    path.startsWith('/auth/') ||
-    path.startsWith('/api/agent-scan');
+    ['/', '/login', '/signup', '/discover'].includes(path) || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
   let authenticated = false;
@@ -31,7 +29,19 @@ export async function middleware(request: NextRequest) {
   }
   if (!publicPage && !authenticated) {
     const blocked = path.startsWith('/api/')
-      ? NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+      ? NextResponse.json(
+          path.startsWith('/api/gateway')
+            ? {
+                apiVersion: 'v1',
+                error: {
+                  code: 'AUTHENTICATION_REQUIRED',
+                  message: 'Authentication required.',
+                  retryable: false,
+                },
+              }
+            : { error: 'Authentication required.' },
+          { status: 401 },
+        )
       : NextResponse.redirect(new URL('/login', request.url));
     response.cookies.getAll().forEach((cookie) => blocked.cookies.set(cookie));
     response = blocked;

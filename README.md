@@ -1,6 +1,6 @@
 # Gateway
 
-An enterprise frontend for testing, observing, and securing autonomous shopping sessions. Built from the Glasswing Hackathon brief for the fictional merchant **Evertrail Outdoors**.
+Gateway tests how autonomous shoppers interact with authorized merchant storefronts. Built with Next.js, TypeScript, Supabase authentication, Playwright, and a server-side OpenAI provider.
 
 ## Run locally
 
@@ -8,68 +8,63 @@ Requires Node.js 20.9 or newer.
 
 ```bash
 npm install
+npx playwright install chromium
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000) for the login page (also available at `/login`). Create an account at `/signup`, confirm your email, then sign in. Supabase configuration is required; protected routes stay inaccessible when it is absent. See [Supabase setup](supabase/README.md).
+Configure Supabase using [Supabase setup](supabase/README.md), then add the server-side model and authorized storefront settings from `.env.example` to `.env.local`. Keep existing credentials when updating the file. See [Gateway API setup and contracts](docs/gateway-api.md).
 
-```bash
-npm run typecheck
-npm run build
-npm run start
-```
+Open [localhost:3000](http://localhost:3000), create/confirm an account if needed, and sign in. On **Discover**, select a configured test environment and inspect the storefront. Review and edit the evidence-backed customer archetypes and scenarios, explicitly approve the plan, then run it. If no environment is configured, the page explains that setup is required; it does not run a different storefront or silently substitute demo results.
 
-## Demo surfaces
+This prototype uses one persistent Node process with owner-scoped files in `.gateway-data/` (or `GATEWAY_DATA_DIR`). Model calls and browser sessions are bounded and request-bound; there is no distributed job system. The browser stops at recommendation or decline, without cart changes or purchases.
 
-| Route                | What to explore                                                            |
-| -------------------- | -------------------------------------------------------------------------- |
-| `/dashboard`         | Readiness score, category health, expandable findings, scan history        |
-| `/scan`              | Storefront annotations, product/cart/checkout/policy previews, scan phases |
-| `/sessions`          | Search and six filters, CSV export, links to individual session traces     |
-| `/replays`           | Replay session index                                                       |
-| `/replays/SES-10482` | Eight-step shopping trace, playback, requests, context, JSON export        |
-| `/security`          | Policy editor, new policies, blocked events linked to matching replays     |
-| `/recommendations`   | Implementation guides, generated policy, resolve and verify workflow       |
-| `/analytics`         | Six Recharts visualizations with 7/30/90-day ranges                        |
-| `/integrations`      | Searchable connectors, configuration dialogs, CI command example           |
-| `/settings`          | Workspace, scan, and notification preferences                              |
+## Connected workflow
 
-Try **Run Scan**, select a numbered storefront issue, filter for a blocked session and open its replay, then run **Verify fix** on a recommendation. Successful verification moves the recommendation to the Resolved tab.
+| Route              | Behavior                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `/discover`        | Storefront selection, inspection, evidence, archetype/scenario editing, approval and scan execution |
+| `/dashboard`       | Persisted scan history, evaluated goal pass rate, usage, and findings                               |
+| `/scan?scanId=…`   | Current scan state, sessions, progress and findings; queued scans can be started                    |
+| `/sessions`        | Persisted sessions, mode/execution/outcome filters and pagination                                   |
+| `/replays`         | Session index linking to recorded replays                                                           |
+| `/replays/:id`     | Action/observation trace, goals, independent evaluation, model usage and JSON export                |
+| `/recommendations` | Evidence-backed findings linking to supporting sessions                                             |
+| `/agent-scan`      | Redirects to the reviewed workflow on Discover                                                      |
+
+Scan requests remain attached to the root app provider while navigating between pages. Reloading reattaches to persisted running scans; it does not start a duplicate run. Drafts can be reopened by URL or from the saved-plan list. Edits require a fresh approval. Empty data, configuration failures and execution failures are displayed explicitly.
+
+The older `/api/agent-scan` execution endpoint is retired with HTTP 410. Its automatic scripted fallback and shopper self-grading are not part of the connected workflow. The older category-report APIs remain separate legacy demo adapters and do not supply the connected dashboard.
+
+**Security, Analytics, Integrations, Settings, and Demand Signal** still contain explicitly labeled demo data/configuration. Their policy/settings controls do not change the runner's permissions. Actual shopper permissions come from the server-configured environment and merchant-reviewed scenarios. These sections do not claim measured checkout or payment outcomes.
+
+Demand Signal at `/demand-signal` preserves the product-concept simulation from main. Its reactions and scores are hand-authored fixtures. Legacy visual replays remain available for known `SES-…` demo IDs and are explicitly labeled as demos; recorded Gateway sessions use UUIDs.
 
 ## Architecture
 
-- `app/`: Next.js App Router routes and global design tokens/responsive styles.
-- `components/layout/`: Persistent application shell, selectors, scan state, shared demo state.
-- `components/dashboard/`, `scans/`, `sessions/`, `security/`, `recommendations/`, `charts/`: Reusable domain components.
-- `components/ui/`: shadcn-style primitives built with Radix UI, CVA, and Tailwind utilities.
-- `lib/types/`: Typed merchant, scan, finding, recommendation, session/event, policy, agent, and readiness contracts.
-- `lib/mock-data/`: Separate fixtures for commerce demo data; authentication uses Supabase.
-- `public/`: Local storefront photography, so previews do not depend on external image requests.
-- `tests/`: Playwright coverage of the main demo workflows and responsive layouts.
+- `app/`: App Router pages and API routes.
+- `components/gateway/`: Review workflow, shared execution/polling state, dashboard, sessions, replay and findings views.
+- `components/layout/`, `components/ui/`: Shared shell and existing UI primitives.
+- `lib/gateway/`: Validated contracts, browser boundary, model provider, evaluation, persistence, APIs and typed browser client.
+- `lib/mock-data/`: Legacy demo fixtures, separate from persisted Gateway results.
+- `lib/agent/`, `lib/ai/`: Retained legacy runner source; no active scan endpoint calls it.
+- `tests/gateway/`: Backend/domain and real-browser fixture tests.
+- `tests/gateway-ui/`: Complete UI-to-API fixture journey using isolated local test servers.
 
-The reusable components receive typed records. Replace fixture imports at the page/container layer and the simulated actions in `AppProvider` with real data loading and mutations when connecting a backend. Session replay lookup already resolves IDs independently and returns a 404 for unknown sessions.
+The OpenAI key stays in the server environment. Explicit `GATEWAY_MODEL_MODE=fixture` runs are labeled throughout and excluded from the dashboard's non-fixture goal pass rate. Estimated cost is unknown until operator-supplied model rates are configured.
 
-Rename the product in `lib/mock-data/merchant.ts` (`productConfig`). This is also the source for the workspace and user identity.
-
-## Frontend-only behavior
-
-Scan and verification runs use short deterministic timers. Policies and recommendation state survive client-side route navigation; all demo changes reset on a page reload. Integration and settings configuration is held in component state. No merchant websites, commerce APIs, payment systems, or notification services are contacted. The CLI command is illustrative.
-
-Analytics charts use generated fixtures for the selected period. Agent distribution and failure-mode tables explicitly display the latest 1,248-session snapshot. The sessions table contains 11 representative sessions from that larger workspace summary. Recommendations expose five prioritized examples from the 12-item summary.
-
-## Browser checks
-
-Start the app on port 3000, then:
+## Verification
 
 ```bash
-npx playwright install chromium
-npm run test:e2e
+npm run typecheck
+npm run test:backend
+npm run test:bridge
+npm run build
 ```
 
-Authentication tests run without an account. Set `GATEWAY_TEST_EMAIL` and `GATEWAY_TEST_PASSWORD` to enable the live account test after applying the migration. Workspace tests require `GATEWAY_TEST_STORAGE_STATE` pointing to a Playwright storage-state file from a signed-in test account; otherwise they are skipped. Keep test credentials and session files outside version control.
+`test:backend` starts a local fixture storefront and tests the shopper/evaluator boundaries. `test:bridge` starts an isolated Next.js instance, fixture storefront, and test-only Supabase-compatible authentication server. It exercises the actual routes and browser runner through inspection, edits, approval, execution, reload, dashboard, filters, replay, error states and authentication rejection. It uses fixture model outputs and needs no real credentials or paid model requests. Its Next output is isolated in `.next-gateway-tests/`; screenshots/traces go to `test-results/`.
 
-The Playwright configuration uses the preinstalled Chromium binary in this workspace when available, and otherwise uses Playwright's managed browser. Tests cover all routes, scans, filters, exports, replay tabs/playback, annotation selection, policy creation/editing, verification, integrations, not-found handling, and tablet/mobile overflow. Screenshots are generated in `test-results/`.
+For additional login and legacy demo checks, start the normal app on port 3000 and run `npm run test:e2e`. `GATEWAY_TEST_EMAIL`/`GATEWAY_TEST_PASSWORD` enable the live account test. `GATEWAY_TEST_STORAGE_STATE` enables the remaining authenticated workspace checks. Keep test credentials and session files outside version control.
 
 ## Image credits
 
-Storefront mock imagery is downloaded from Unsplash and stored locally: mountain landscape (`photo-1464822759023-fed622ff2c3b`) and hiking backpack (`photo-1622260614153-03223fb72052`). Evertrail Outdoors and all operational data are fictional demo content.
+Legacy storefront demo imagery comes from Unsplash: mountain landscape (`photo-1464822759023-fed622ff2c3b`) and hiking backpack (`photo-1622260614153-03223fb72052`). Evertrail Outdoors is fictional; connected scan results come from the explicitly configured test environment.

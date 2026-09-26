@@ -120,7 +120,6 @@ export interface Recommendation {
   reason: string;
   fix: string;
   impact: string;
-  impactLevel: 'High' | 'Medium';
   effort: string;
   affected: number;
   category: string;
@@ -328,4 +327,40 @@ export interface SecurityEvent {
   sessionId: string;
   time: string;
   policy: string;
+}
+export interface ConsumerPersona {
+  id: string;
+  name: string;
+  segment: string;
+  age: number;
+  incomeBand: string;
+  priorPurchases: string[];
+}
+export interface ProductUnderTest {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+}
+export type PersonaVerdict = 'Would buy' | 'Would consider' | 'Would not buy';
+export type PriceSensitivity = 'Underpriced' | 'Fair' | 'Overpriced';
+export interface PersonaReaction {
+  personaId: string;
+  productId: string;
+  verdict: PersonaVerdict;
+  statedReasoning: string;
+  priceSensitivity: PriceSensitivity;
+  objections: string[];
+}
+export interface DemandSignalRun {
+  id: string;
+  productId: string;
+  date: string;
+  personaCount: number;
+  interestScore: number;
+  wouldBuyPct: number;
+  wouldConsiderPct: number;
+  wouldNotBuyPct: number;
+  topObjections: { objection: string; count: number }[];
+  validationNote: string;
 }

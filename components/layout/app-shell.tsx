@@ -1,13 +1,12 @@
 'use client';
 import { Button, Dialog, Dropdown, DropdownItem, LoadingLabel } from '@/components/ui/primitives';
-import { merchant, productConfig } from '@/lib/mock-data/merchant';
+import { productConfig } from '@/lib/mock-data/merchant';
 import { cn } from '@/lib/utils';
 import {
   Activity,
   ArrowUpRight,
   Bell,
   BookOpen,
-  Bot,
   Building2,
   ChartNoAxesCombined,
   Check,
@@ -25,6 +24,7 @@ import {
   Settings2,
   ShieldCheck,
   Terminal,
+  Users,
   Wand2,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -32,15 +32,16 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { signOut } from '@/app/auth/actions';
 import { useApp } from './app-provider';
+import { useGateway } from '@/components/gateway/provider';
 const navigation = [
   { href: '/discover', label: 'Discover', icon: Search },
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/scan', label: 'Readiness Scan', icon: ScanLine },
-  { href: '/agent-scan', label: 'Live Agent Scan', icon: Bot },
+  { href: '/demand-signal', label: 'Demand Signal', icon: Users },
   { href: '/sessions', label: 'Sessions', icon: Activity },
   { href: '/security', label: 'Security', icon: ShieldCheck },
   { href: '/replays', label: 'Replays', icon: CirclePlay },
-  { href: '/recommendations', label: 'Recommendations', icon: Wand2, badge: '12' },
+  { href: '/recommendations', label: 'Findings', icon: Wand2 },
   { href: '/analytics', label: 'Analytics', icon: ChartNoAxesCombined },
 ];
 export function GatewayLogo({ small = false }: { small?: boolean }) {
@@ -95,10 +96,10 @@ export function AppSidebar({
               href={item.href}
               onClick={onClose}
               className={cn('nav-item', path.startsWith(item.href) && 'active')}
+              aria-current={path.startsWith(item.href) ? 'page' : undefined}
             >
               <item.icon size={17} strokeWidth={1.7} />
               <span>{item.label}</span>
-              {item.badge && <span className="nav-badge">{item.badge}</span>}
             </Link>
           ))}
           <div className="nav-divider" />
@@ -111,6 +112,7 @@ export function AppSidebar({
               href={item.href}
               onClick={onClose}
               className={cn('nav-item', path.startsWith(item.href) && 'active')}
+              aria-current={path.startsWith(item.href) ? 'page' : undefined}
             >
               <item.icon size={17} strokeWidth={1.7} />
               {item.label}
@@ -120,7 +122,7 @@ export function AppSidebar({
         <div className="sidebar-bottom">
           <div className="workspace-health">
             <span className="live-dot" />
-            All systems operational
+            Read-only shopper testing
             <ArrowUpRight size={12} />
           </div>
           <div className="plan-card">
@@ -155,54 +157,25 @@ function ArrowRightSmall() {
   return <ArrowUpRight size={12} />;
 }
 export function MerchantSelector() {
+  const { activeScan, dashboard } = useGateway();
+  const url = activeScan?.draft.merchantUrl || dashboard?.scans[0]?.merchantUrl;
   return (
-    <Dropdown
-      trigger={
-        <button className="merchant-selector">
-          <span className="merchant-avatar">
-            <Mountain size={17} />
-          </span>
-          <strong>{merchant.name}</strong>
-          <ChevronDown size={13} />
-        </button>
-      }
-    >
-      <div className="dropdown-label">YOUR STOREFRONTS</div>
-      <DropdownItem selected>
-        <Mountain size={15} />
-        <span>
-          {merchant.name}
-          <small>{merchant.domain}</small>
-        </span>
-      </DropdownItem>
-      <div className="dropdown-separator" />
-      <DropdownItem onSelect={() => window.location.assign('/integrations')}>
-        <Plug size={14} />
-        Connect a storefront
-      </DropdownItem>
-    </Dropdown>
+    <Link href="/discover" className="merchant-selector">
+      <span className="merchant-avatar">
+        <Mountain size={17} />
+      </span>
+      <strong>{url ? new URL(url).hostname : 'Choose a storefront'}</strong>
+      <ChevronDown size={13} />
+    </Link>
   );
 }
 export function EnvironmentSelector() {
-  const { environment, setEnvironment } = useApp();
+  const { activeScan, dashboard } = useGateway();
+  const environment = activeScan?.draft.environmentId || dashboard?.scans[0]?.environmentId;
   return (
-    <Dropdown
-      trigger={
-        <button className="environment-selector">
-          <span className={cn('live-dot', environment === 'Staging' && 'amber')} />
-          {environment}
-          <ChevronDown size={12} />
-        </button>
-      }
-    >
-      <div className="dropdown-label">ENVIRONMENT</div>
-      {(['Production', 'Staging'] as const).map((env) => (
-        <DropdownItem key={env} selected={env === environment} onSelect={() => setEnvironment(env)}>
-          <span className={cn('live-dot', env === 'Staging' && 'amber')} />
-          {env}
-        </DropdownItem>
-      ))}
-    </Dropdown>
+    <Link className="environment-selector" href="/discover">
+      {environment || 'Select environment'}
+    </Link>
   );
 }
 export function ScanButton({ outline = false }: { outline?: boolean }) {
@@ -224,6 +197,8 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
   const [notifications, setNotifications] = useState(false);
   const [identity, setIdentity] = useState('Your account');
   const { notify } = useApp();
+  const { activeScan, dashboard } = useGateway();
+  const latest = dashboard?.scans[0];
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/account', { signal: controller.signal })
@@ -244,7 +219,7 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
       <span className="topbar-divider" />
       <span className="topbar-domain">
         <Globe2 size={13} />
-        {merchant.domain}
+        {activeScan?.draft.environmentId || latest?.environmentId || 'No test environment selected'}
       </span>
       <EnvironmentSelector />
       <div className="topbar-right">
@@ -304,28 +279,24 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
         title="Notifications"
         description="Recent activity in your commerce workspace."
       >
-        <div className="notification-item">
-          <span className="icon-box green">
-            <Check size={18} />
-          </span>
-          <div>
-            <strong>Readiness scan completed</strong>
-            <p>Scan #25 analyzed 86 pages. Readiness improved to 74.</p>
-            <small>Today at 11:42 AM</small>
+        {latest ? (
+          <div className="notification-item">
+            <span className="icon-box blue">
+              <Check size={18} />
+            </span>
+            <div>
+              <strong>Latest scan: {latest.status}</strong>
+              <p>
+                {latest.merchantUrl} · {latest.sessionCount} sessions
+              </p>
+              <Link href={`/scan?scanId=${latest.id}`} onClick={() => setNotifications(false)}>
+                Inspect scan →
+              </Link>
+            </div>
           </div>
-        </div>
-        <div className="notification-item">
-          <span className="icon-box amber">
-            <ShieldCheck size={18} />
-          </span>
-          <div>
-            <strong>Unsafe promotion attempt blocked</strong>
-            <p>Merchant policy protected session SES-10479.</p>
-            <Link href="/replays/SES-10479" onClick={() => setNotifications(false)}>
-              Inspect session →
-            </Link>
-          </div>
-        </div>
+        ) : (
+          <p>No scans have been recorded yet.</p>
+        )}
       </Dialog>
     </header>
   );
@@ -375,9 +346,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <strong>{current?.label || 'Sessions'}</strong>
             <div className="demo-indicator">
               <span className="live-dot" />
-              Demo workspace
+              Evidence-backed tests
             </div>
           </div>
+          {['/security', '/analytics', '/integrations', '/settings'].some((path) =>
+            pathname.startsWith(path),
+          ) && (
+            <div className="info-panel">
+              <span>
+                This section contains demo workspace settings and sample data. Actual shopper
+                results are in Overview, Sessions, Replays, and Findings.
+              </span>
+            </div>
+          )}
           {children}
           <footer className="page-footer">
             <span>
@@ -386,7 +367,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <span>
               <span className="live-dot" />
-              All systems operational<span className="footer-separator">·</span>
+              Read-only shopper testing<span className="footer-separator">·</span>
               <button onClick={() => setHelp(true)}>
                 Help & documentation
                 <ExternalLink size={11} />
@@ -405,12 +386,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p>
             <strong>1. Connect your storefront</strong>
             <br />
-            Configure Shopify or a commerce API under Integrations.
+            Choose a server-configured test environment on Discover.
           </p>
           <p>
             <strong>2. Run a readiness scan</strong>
             <br />
-            Gateway discovers products, generates shopping goals, and evaluates merchant policies.
+            Inspect the storefront, review the proposed shopper archetypes and scenarios, then
+            approve the plan.
           </p>
           <p>
             <strong>3. Inspect shopping sessions</strong>
@@ -420,13 +402,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <p>
             <strong>4. Fix and verify</strong>
             <br />
-            Use Recommendations to review implementation details and run a verification.
+            Use Findings to inspect the evidence, make changes to your storefront, and rerun the
+            reviewed plan.
           </p>
           <div className="info-panel">
             <Terminal size={17} />
             <span>
-              This workspace uses simulated data. Scan and verification runs do not contact the
-              merchant or place live orders.
+              Shopper runs visit the configured storefront and stop at recommendation or decline.
+              Fixture model runs are explicitly labeled.
             </span>
           </div>
         </div>
