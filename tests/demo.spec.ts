@@ -96,6 +96,14 @@ test('session filters, CSV export, selected replay, and timeline tabs', async ({
     page.getByText('Size 11 variant SKU does not match checkout availability.'),
   ).toBeVisible();
   await page.goto('/replays/SES-10482');
+  await expect(page.getByRole('heading', { name: 'Investigation view' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Requesting shipping' })).toBeVisible();
+  await expect(page.getByText('Shipping: 3–5 business days', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Step 3 Comparing products/i }).click();
+  await expect(page.getByRole('heading', { name: 'Comparing products' })).toBeVisible();
+  await expect(page.getByText('No merchant-side failure was detected at this step.')).toBeVisible();
+  await page.getByRole('button', { name: /Step 4 Requesting shipping/i }).click();
+  await expect(page.getByText('destination-aware delivery estimate', { exact: false })).toBeVisible();
   await page.getByRole('tab', { name: 'Requests', exact: true }).click();
   await expect(page.locator('.request-list')).toContainText('GET /collections/backpacks');
   await page.getByRole('tab', { name: 'Agent context' }).click();

@@ -30,6 +30,9 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
   const [playing, setPlaying] = useState(false);
   const [step, setStep] = useState(0);
   const [allEvents, setAllEvents] = useState(false);
+  const [focusEventId, setFocusEventId] = useState(
+    () => events.find((event) => event.type === 'warning')?.id ?? events[0]?.id ?? 1,
+  );
   const { notify } = useApp();
   const featured = session.id === 'SES-10482';
   useEffect(() => {
@@ -47,6 +50,12 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
     );
     return () => clearInterval(t);
   }, [playing, events.length]);
+  useEffect(() => {
+    if (step > 0) setFocusEventId(step);
+  }, [step]);
+  const focusEvent = events.find((event) => event.id === focusEventId) ?? events[0];
+  const visualState = getReplayVisualState(focusEvent?.id ?? 1);
+  const diagnosis = getReplayDiagnosis(focusEvent);
   const exportTrace = () => {
     const url = URL.createObjectURL(
       new Blob([JSON.stringify({ session, events }, null, 2)], { type: 'application/json' }),
@@ -66,7 +75,7 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
       </Link>
       <PageHeading
         title="Agent Replay"
-        subtitle="Inspect how an autonomous shopper interpreted and interacted with the storefront."
+        subtitle="Follow the agent journey, inspect merchant evidence, and diagnose exactly where friction appeared."
         action={
           <Button variant="outline" onClick={exportTrace}>
             <Download size={14} />
@@ -106,10 +115,114 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
           </StatusBadge>
         </div>
       </Card>
+      <Card className="replay-investigation">
+        <CardHeader
+          title="Investigation view"
+          subtitle="Select a journey step to inspect the storefront state and diagnosis."
+          action={
+            <StatusBadge tone={session.issues ? 'amber' : 'green'}>
+              {session.issues} {session.issues === 1 ? 'issue' : 'issues'} detected
+            </StatusBadge>
+          }
+        />
+        <div className="investigation-grid">
+          <section className="journey-rail" aria-label="Agent journey">
+            <span className="investigation-label">JOURNEY</span>
+            <div className="journey-steps">
+              {events.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  className={focusEvent?.id === event.id ? 'active' : ''}
+                  aria-pressed={focusEvent?.id === event.id}
+                  onClick={() => {
+                    setPlaying(false);
+                    setFocusEventId(event.id);
+                  }}
+                >
+                  <span className={event.type === 'warning' ? 'warning' : event.type === 'complete' ? 'success' : ''}>
+                    {event.id}
+                  </span>
+                  <span>
+                    <small>{event.time}s</small>
+                    <strong>{event.title}</strong>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="storefront-state" aria-labelledby="storefront-state-title">
+            <div className="investigation-section-heading">
+              <span className="investigation-label">STOREFRONT STATE</span>
+              <span className="subtle-badge">{visualState.context}</span>
+            </div>
+            <div className="storefront-browser">
+              <div className="storefront-browser-bar">
+                <span />
+                <span />
+                <span />
+                <code>evertrailoutdoors.com</code>
+              </div>
+              <div className="storefront-browser-body">
+                <div className="replay-product-image" role="img" aria-label="Summit Trail 45L backpack" />
+                <div className="replay-storefront-copy">
+                  <small>{visualState.eyebrow}</small>
+                  <h3 id="storefront-state-title">{visualState.title}</h3>
+                  <strong>{visualState.value}</strong>
+                  <p>{visualState.detail}</p>
+                  {focusEvent?.type === 'warning' && (
+                    <div className="storefront-warning">
+                      <ShieldCheck size={13} />
+                      Destination required before a reliable delivery estimate can be verified.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="storefront-evidence">
+              <span className="mono">{focusEvent?.action ?? 'Observed browser state'}</span>
+              <span>{focusEvent?.time}s</span>
+            </div>
+          </section>
+
+          <section className="diagnosis-panel" aria-labelledby="diagnosis-title">
+            <div className="investigation-section-heading">
+              <span className="investigation-label">DIAGNOSIS</span>
+              {focusEvent?.status && <StatusBadge dot={false}>{focusEvent.status}</StatusBadge>}
+            </div>
+            <h3 id="diagnosis-title">{focusEvent?.title}</h3>
+            <dl>
+              <div>
+                <dt>Expected</dt>
+                <dd>{diagnosis.expected}</dd>
+              </div>
+              <div>
+                <dt>Observed</dt>
+                <dd>{diagnosis.observed}</dd>
+              </div>
+              <div>
+                <dt>Root cause</dt>
+                <dd>{diagnosis.rootCause}</dd>
+              </div>
+              <div className="diagnosis-fix">
+                <dt>Recommended fix</dt>
+                <dd>{diagnosis.fix}</dd>
+              </div>
+            </dl>
+            {focusEvent?.type === 'warning' && (
+              <Link href="/recommendations#REC-004" className="text-link">
+                Open remediation
+                <ArrowRight size={13} />
+              </Link>
+            )}
+          </section>
+        </div>
+      </Card>
       <div className="replay-layout">
         <Card className="replay-main">
           <CardHeader
-            title="Shopping agent session"
+            title="Full session trace"
             icon={
               <span className="section-icon">
                 <Terminal size={15} />
@@ -173,7 +286,7 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
             <span style={{ width: `${(step / events.length) * 100}%` }} />
           </div>
           {tab === 'Timeline' ? (
-            <AgentTimeline events={events} activeStep={step} />
+            <AgentTimeline events={events} activeStep={step || focusEventId} />
           ) : tab === 'Requests' ? (
             <div className="request-list">
               {events
@@ -345,4 +458,73 @@ export function ReplayPage({ session }: { session: ShoppingSession }) {
       </Dialog>
     </>
   );
+}
+
+
+function getReplayVisualState(eventId: number) {
+  if (eventId <= 2)
+    return {
+      context: 'Catalog',
+      eyebrow: 'BACKPACK COLLECTION',
+      title: '3 relevant products',
+      value: '$129–$259',
+      detail: 'The agent can see ratings, prices, and basic product metadata before narrowing the set.',
+    };
+  if (eventId <= 4)
+    return {
+      context: eventId === 4 ? 'Shipping policy' : 'Product',
+      eyebrow: 'SUMMIT TRAIL 45L · FOREST',
+      title: eventId === 4 ? 'Shipping: 3–5 business days' : 'Summit Trail 45L',
+      value: '$199 · 4.9/5',
+      detail:
+        eventId === 4
+          ? 'The storefront returns a generic delivery window before collecting a destination.'
+          : 'Selected because it is within budget, highest rated, and sized for a 3-day trip.',
+    };
+  if (eventId <= 6)
+    return {
+      context: 'Cart',
+      eyebrow: 'CART · 1 ITEM',
+      title: 'Summit Trail 45L',
+      value: '$199.00',
+      detail:
+        eventId === 6
+          ? 'WELCOME10 was rejected and an unrequested retry was prevented by policy.'
+          : 'The selected backpack was added successfully with quantity and price preserved.',
+    };
+  return {
+    context: 'Checkout',
+    eyebrow: 'ORDER SUMMARY',
+    title: 'Simulation total',
+    value: '$214.92',
+    detail:
+      eventId === 8
+        ? 'The simulated order completed without capturing payment or creating a live order.'
+        : 'Checkout remains within the customer’s $250 spending limit. Payment capture is disabled.',
+  };
+}
+
+function getReplayDiagnosis(event?: ReturnType<typeof getSessionEvents>[number]) {
+  if (!event)
+    return { expected: '', observed: '', rootCause: '', fix: '' };
+  if (event.type === 'warning')
+    return {
+      expected: 'A destination-aware delivery estimate before the agent relies on shipping timing.',
+      observed: 'The storefront returned “3–5 business days” without first collecting a destination.',
+      rootCause: 'Shipping policy data is not conditioned on destination, so delivery eligibility cannot be verified.',
+      fix: 'Require a destination before returning delivery timing, then expose the resulting estimate in machine-readable policy data.',
+    };
+  if (event.type === 'promo')
+    return {
+      expected: 'Apply only promotions authorized by the shopper’s intent and merchant policy.',
+      observed: event.summary,
+      rootCause: 'The promotion was ineligible; the policy layer correctly prevented an unrequested retry.',
+      fix: 'No remediation required. Preserve the current control and keep the decision in the audit trace.',
+    };
+  return {
+    expected: 'The agent completes this step within the customer goal and merchant policy.',
+    observed: event.summary,
+    rootCause: 'No merchant-side failure was detected at this step.',
+    fix: 'No remediation required. Continue to the next journey step.',
+  };
 }
