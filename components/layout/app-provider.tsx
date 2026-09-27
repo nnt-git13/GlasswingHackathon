@@ -1,5 +1,5 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useGateway } from '@/components/gateway/provider';
 import { securityPolicies } from '@/lib/mock-data/security';
 import { getSecurityPoliciesReport } from '@/lib/security-policies';
@@ -26,6 +26,8 @@ const AppContext = createContext<AppState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [environment, setEnvironment] = useState<Environment>('Production');
   const router = useRouter();
+  const pathname = usePathname();
+  const needsSecurityPolicies = pathname.startsWith('/security') || pathname.startsWith('/replays/');
   const { activeScan, dashboard } = useGateway();
   const scanning = activeScan?.status === 'running' || activeScan?.status === 'queued';
   const scanProgress = activeScan?.sessions.length
@@ -52,6 +54,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
+    if (!needsSecurityPolicies) return;
     let cancelled = false;
     getSecurityPoliciesReport().then((result) => {
       if (!cancelled) setPolicies(result.policies);
@@ -59,7 +62,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [needsSecurityPolicies]);
   const runScan = () => router.push('/discover');
   return (
     <AppContext.Provider

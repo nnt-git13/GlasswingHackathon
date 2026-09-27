@@ -11,6 +11,20 @@ test('workspace and account endpoint reject unauthenticated requests', async ({
   expect(response.status()).toBe(401);
 });
 
+
+test('login avoids workspace-only data requests', async ({ page }) => {
+  const workspaceRequests: string[] = [];
+  page.on('request', (request) => {
+    const url = request.url();
+    if (url.includes('/api/security-policies') || url.includes('/api/gateway/dashboard')) {
+      workspaceRequests.push(url);
+    }
+  });
+  await page.goto('/login');
+  await page.waitForLoadState('networkidle');
+  expect(workspaceRequests).toEqual([]);
+});
+
 test('signup form validates fields and offers password visibility', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Create an account' }).click();
