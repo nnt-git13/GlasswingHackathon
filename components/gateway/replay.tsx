@@ -1,6 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  CheckCircle2,
+  Compass,
+  Globe2,
+  Search,
+  ShieldAlert,
+  ShoppingBag,
+} from 'lucide-react';
+import styles from './replay.module.css';
+import { ReplayObservation } from './replay-observation';
 import { PageHeading } from '@/components/ui/page-heading';
 import {
   Button,
@@ -13,6 +27,18 @@ import {
 import { formatCost, formatTime } from '@/lib/gateway/client';
 import type { Session } from '@/lib/gateway/schemas';
 import { ErrorNotice, FixtureBadge, OutcomeBadge, useGatewayData } from './shared';
+const actionLabels = {
+  navigate: 'Browse page',
+  search: 'Search the store',
+  inspect_product: 'Inspect product',
+  stop: 'Finish shopping',
+};
+const actionIcons = {
+  navigate: Compass,
+  search: Search,
+  inspect_product: ShoppingBag,
+  stop: CheckCircle2,
+};
 export function GatewayReplay({ id }: { id: string }) {
   const {
     data: session,
@@ -66,7 +92,7 @@ export function GatewayReplay({ id }: { id: string }) {
       {loading && !session && <p role="status">Loading session…</p>}
       {session && (
         <div className="gateway-stack">
-          <div className="gateway-toolbar">
+          <div className={`gateway-toolbar ${styles.sessionSummary}`}>
             <FixtureBadge fixture={session.fixture} />
             <StatusBadge>{session.status}</StatusBadge>
             <OutcomeBadge session={session} />
@@ -86,31 +112,56 @@ export function GatewayReplay({ id }: { id: string }) {
             />
           </Card>
           {tab === 'Trace' && (
-            <div className="gateway-replay-layout">
-              <Card>
-                <CardHeader
-                  title="Recorded events"
-                  subtitle="Actions and observations in execution order."
-                />
+            <div className={styles.layout}>
+              <Card className={styles.timelinePanel}>
+                <div className={styles.timelineHeading}>
+                  <span className={styles.eyebrow}>SHOPPER JOURNEY</span>
+                  <h2>
+                    Recorded events <span>{session.trace.length}</span>
+                  </h2>
+                  <p>Follow each decision through the store.</p>
+                </div>
                 {session.trace.length ? (
-                  <ol className="gateway-timeline">
-                    {session.trace.map((item, index) => (
-                      <li key={item.id}>
-                        <button
-                          className={selected === index ? 'selected' : ''}
-                          onClick={() => setSelected(index)}
-                          aria-pressed={selected === index}
-                        >
-                          <strong>
-                            {index + 1}.{' '}
-                            {item.action?.type.replaceAll('_', ' ') || 'Observe storefront'}
-                          </strong>
-                          <span>
-                            {item.status} · {formatTime(item.timestamp)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
+                  <ol className={styles.timeline}>
+                    {session.trace.map((item, index) => {
+                      const Icon =
+                        item.status === 'blocked' || item.status === 'error'
+                          ? ShieldAlert
+                          : item.action
+                            ? actionIcons[item.action.type]
+                            : Globe2;
+                      return (
+                        <li key={item.id}>
+                          <button
+                            className={styles.eventButton}
+                            data-selected={selected === index}
+                            onClick={() => setSelected(index)}
+                            aria-pressed={selected === index}
+                          >
+                            <span className={styles.eventIcon}>
+                              <Icon size={17} />
+                            </span>
+                            <span className={styles.eventCopy}>
+                              <strong>
+                                {item.action
+                                  ? actionLabels[item.action.type]
+                                  : 'Observe storefront'}
+                              </strong>
+                              <span className={styles.eventReason}>{item.detail}</span>
+                              <small>
+                                Step {index + 1} ·{' '}
+                                {new Date(item.timestamp).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                })}{' '}
+                                · {item.status}
+                              </small>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ol>
                 ) : (
                   <EmptyState
@@ -122,66 +173,124 @@ export function GatewayReplay({ id }: { id: string }) {
                     }
                   />
                 )}
+                <Link className={styles.scanLink} href={`/scan?scanId=${session.scanId}`}>
+                  Back to scan <ArrowUpRight size={13} />
+                </Link>
               </Card>
-              <Card>
-                <CardHeader
-                  title={event?.observation?.title || event?.action?.type || 'Observation'}
-                />
-                {event && (
-                  <div className="gateway-panel gateway-stack">
-                    <StatusBadge>{event.status}</StatusBadge>
-                    <p>{event.detail}</p>
-                    {event.action && (
-                      <dl className="gateway-details">
-                        <dt>Action</dt>
-                        <dd>{event.action.type}</dd>
-                        {event.action.url && (
-                          <>
-                            <dt>URL</dt>
-                            <dd>{event.action.url}</dd>
-                          </>
+              <div className={styles.detailColumn}>
+                {event ? (
+                  <>
+                    <Card className={styles.decisionPanel}>
+                      <div className={styles.decisionTop}>
+                        <div>
+                          <span className={styles.eyebrow}>
+                            STEP {selected + 1} OF {session.trace.length}
+                          </span>
+                          <h2>
+                            {event.action ? actionLabels[event.action.type] : 'Observe storefront'}
+                          </h2>
+                        </div>
+                        <div className={styles.navigation}>
+                          <button
+                            aria-label="Previous event"
+                            disabled={selected === 0}
+                            onClick={() => setSelected(selected - 1)}
+                          >
+                            <ArrowLeft size={16} />
+                          </button>
+                          <button
+                            aria-label="Next event"
+                            disabled={selected >= session.trace.length - 1}
+                            onClick={() => setSelected(selected + 1)}
+                          >
+                            <ArrowRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className={styles.decisionMeta}>
+                        <StatusBadge>{event.status}</StatusBadge>
+                        <span>{formatTime(event.timestamp)}</span>
+                        {event.action?.disposition && (
+                          <span className={styles.disposition}>
+                            {event.action.disposition === 'recommend'
+                              ? 'Product recommended'
+                              : 'Shopper declined'}
+                          </span>
                         )}
-                        {event.action.query && (
-                          <>
-                            <dt>Search query</dt>
-                            <dd>{event.action.query}</dd>
-                          </>
-                        )}
-                        {event.action.disposition && (
-                          <>
-                            <dt>Disposition</dt>
-                            <dd>{event.action.disposition}</dd>
-                          </>
-                        )}
-                      </dl>
+                      </div>
+                      <p className={styles.decisionReason}>{event.detail}</p>
+                      {event.action?.query && (
+                        <div className={styles.searchQuery}>
+                          <Search size={15} />
+                          <span>Search query</span>
+                          <strong>{event.action.query}</strong>
+                        </div>
+                      )}
+                      {event.action?.url && !event.observation && (
+                        <a
+                          className={styles.actionLink}
+                          href={event.action.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {event.action.url}
+                          <ArrowUpRight size={13} />
+                        </a>
+                      )}
+                    </Card>
+                    {event.observation ? (
+                      <ReplayObservation
+                        key={event.observation.id}
+                        sessionId={session.id}
+                        observation={event.observation}
+                      />
+                    ) : (
+                      <Card className={styles.noObservation}>
+                        <CheckCircle2 size={22} />
+                        <div>
+                          <h3>
+                            {event.action?.type === 'stop'
+                              ? 'Shopping session ended'
+                              : 'No page captured for this action'}
+                          </h3>
+                          <p>
+                            {event.action?.type === 'stop'
+                              ? 'The shopper’s final decision is recorded above. Select an earlier step to inspect its browser evidence.'
+                              : 'Review the recorded status and reason above.'}
+                          </p>
+                        </div>
+                      </Card>
                     )}
                     {event.observation && (
-                      <>
-                        <a href={event.observation.url} target="_blank" rel="noreferrer">
-                          {event.observation.url}
-                        </a>
-                        <p>Captured {formatTime(event.observation.timestamp)}</p>
-                        <pre className="gateway-observation">{event.observation.text}</pre>
-                        {event.observation.products.map((product, index) => (
-                          <p key={index}>
-                            <strong>{product.name}</strong> · {product.price ?? 'Price unknown'}{' '}
-                            {product.currency || ''}
-                          </p>
-                        ))}
+                      <Card className={styles.evidencePanel}>
                         <details>
-                          <summary>Discovered links ({event.observation.links.length})</summary>
-                          {event.observation.links.map((link, index) => (
-                            <p key={index}>
-                              {link.text} — {link.url}
-                            </p>
-                          ))}
+                          <summary>
+                            <BookOpen size={15} />
+                            Discovered links <span>{event.observation.links.length}</span>
+                          </summary>
+                          <div className={styles.links}>
+                            {event.observation.links.map((link, index) => (
+                              <a key={index} href={link.url} target="_blank" rel="noreferrer">
+                                <strong>{link.text || 'Untitled link'}</strong>
+                                <span>{link.url}</span>
+                                <ArrowUpRight size={13} />
+                              </a>
+                            ))}
+                          </div>
                         </details>
-                      </>
+                        <p className={styles.evidenceId}>Evidence ID: {event.observation.id}</p>
+                      </Card>
                     )}
-                    <small>Evidence ID: {event.observation?.id || event.id}</small>
-                  </div>
+                  </>
+                ) : (
+                  <Card>
+                    <EmptyState
+                      title="Select a recorded event"
+                      description="Browser evidence appears as this shopper explores the storefront."
+                    />
+                  </Card>
                 )}
-              </Card>
+              </div>
             </div>
           )}
           {tab === 'Goal & constraints' && (
