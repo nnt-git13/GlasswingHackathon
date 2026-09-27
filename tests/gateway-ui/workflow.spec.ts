@@ -198,6 +198,12 @@ test('authenticated merchant inspects, edits, approves, and runs the actual Gate
   await expect(page.getByText('3 / 3 sessions finished', { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  const dashboardLink = page.getByRole('link', { name: 'Open dashboard', exact: true });
+  await expect(dashboardLink).toHaveCount(1);
+  await expect(dashboardLink).toHaveAttribute('href', '/dashboard');
+  await expect(
+    dashboardLink.locator('..').getByRole('link', { name: 'Open saved scan' }),
+  ).toBeVisible();
   const scans = await (await page.request.get(`${appOrigin}/api/gateway/scans`)).json();
   savedScan = (
     await (

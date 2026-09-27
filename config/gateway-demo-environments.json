@@ -50,5 +50,42 @@
     ],
     "allowLoopback": false,
     "entryPath": "/en/default/products?cursor=WyJkYXJrLXBvbHlnb24tdGVlIiwiMTM4Il0%3D&direction=next"
+  },
+  {
+    "id": "jskis",
+    "origin": "https://jskis.com",
+    "entryPath": "/",
+    "allowedPathPrefixes": [
+      "/",
+      "/products",
+      "/collections",
+      "/search",
+      "/policies",
+      "/pages",
+      "/blogs",
+      "/cdn/shop",
+      "/cdn/fonts"
+    ],
+    "searchPath": "/search",
+    "searchQueryParam": "q",
+    "readOnlyQueryRules": [
+      {
+        "pathPrefix": "/cdn/shop",
+        "names": ["v", "width", "height", "crop"]
+      },
+      {
+        "pathPrefix": "/products",
+        "names": ["variant", "_pos", "_sid", "_ss"]
+      },
+      {
+        "pathPrefix": "/collections",
+        "names": ["page", "sort_by"]
+      },
+      {
+        "pathPrefix": "/search",
+        "names": ["type", "options[prefix]", "page"]
+      }
+    ],
+    "allowLoopback": false
   }
 ]

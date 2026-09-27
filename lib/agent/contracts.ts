@@ -22,6 +22,7 @@ export interface BuyerPersona {
  * fills it in, and N buyer LLMs read from it.
  */
 export interface IntakeContext {
+  interests?: string[];
   storefrontUrl: string;
   storefrontLabel: string;
   category: string;
@@ -44,6 +45,7 @@ export interface IntakeContext {
  * explicit brief instead of guessing from free text.
  */
 export interface ScanConfig {
+  interests?: string[];
   focuses: string[];
   personaIds: string[];
   budget: number;

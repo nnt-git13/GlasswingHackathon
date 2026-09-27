@@ -477,6 +477,12 @@ section.persona .hypothesis textarea {
 .executionAnchor {
   scroll-margin-top: 85px;
 }
+.resultActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 
 .inspectionLoading {
   padding: 28px;
