@@ -127,7 +127,7 @@ Start on `/discover`: select an authorized test environment, inspect, edit the a
 
 ## Public demo browser checks
 
-`config/gateway-demo-environments.json` contains explicit read-only policies for the Shopify Dawn and Saleor demos. Set `GATEWAY_TEST_ENVIRONMENTS` to its compact JSON contents to enable them in Discover. These policies do not allow checkout or storefront account creation. Create the test account in Gateway itself.
+`config/gateway-demo-environments.json` contains explicit read-only policies for Shopify Dawn, Saleor, and J Skis (`https://jskis.com`). Set `GATEWAY_TEST_ENVIRONMENTS` to its compact JSON contents to enable them in Discover. These policies do not allow checkout or storefront account creation. Create the test account in Gateway itself.
 
 Run `GATEWAY_LIVE_STOREFRONTS=1 npx playwright test tests/gateway-live/ --output=test-results/live-storefronts` to check the real isolated browser against the supplied URLs, product/variant inspection, structured prices, and search. This opt-in suite makes no model calls and does not authenticate to Gateway; it is not proof of a completed AI scan. Observations are saved as `observations.json` in the test output. Saleor's supplied pagination cursor can return an empty page; the test follows its observed catalog link to recover.
 

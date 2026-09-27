@@ -12,3 +12,4 @@ test-results/
 
 .next-gateway-tests/
 .next-integrations-tests/
+.next-discover-tests/

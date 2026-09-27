@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { shopperInterests } from '../agent/interests';
 
 const text = z.string().min(1).max(2000);
 const refs = z.array(z.string().min(1)).min(1).max(30);
@@ -99,6 +100,10 @@ export const reviewSchema = z.strictObject({
 export const inspectRequestSchema = z.strictObject({
   merchantUrl: z.string().url().max(2048),
   environmentId: z.string().min(1).max(80),
+  shopperInterests: z
+    .array(z.enum(shopperInterests.map((item) => item.id)))
+    .max(6)
+    .optional(),
 });
 export const scanRequestSchema = z.strictObject({
   draftId: z.string().uuid(),
@@ -136,6 +141,7 @@ export interface ModelCall {
   errorCode?: string;
 }
 export interface Draft {
+  shopperInterests?: string[];
   id: string;
   ownerId: string;
   createdAt: string;

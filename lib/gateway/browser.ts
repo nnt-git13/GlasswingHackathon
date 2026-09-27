@@ -450,7 +450,14 @@ export class StorefrontBrowser implements ShopperBrowser {
     // Capture rendered text and literal JSON-LD. Never accept model-invented prices as evidence.
     const snapshot = await this.page.evaluate(() => {
       const text = document.body.innerText.slice(0, 12000);
+      const seenLinks = new Set<string>();
       const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'))
+        .slice(0, 1000)
+        .filter((link) => {
+          if (seenLinks.has(link.href)) return false;
+          seenLinks.add(link.href);
+          return true;
+        })
         .slice(0, 100)
         .map((link) => ({
           url: link.href,
