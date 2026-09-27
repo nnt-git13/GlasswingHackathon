@@ -4,10 +4,12 @@ import { supabaseConfig } from '@/lib/supabase/config';
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const publicPage =
-    ['/', '/login', '/signup', '/discover'].includes(path) || path.startsWith('/auth/');
+const publicPage = ['/', '/login', '/signup'].includes(path) || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
+  // Demo mode: with no Supabase configured there is no real account service,
+  // so protected routes stay open. A configured deployment enforces auth.
+  const demoMode = !config;
   let authenticated = false;
   if (config) {
     const supabase = createServerClient(config.url, config.key, {
@@ -27,7 +29,7 @@ export async function middleware(request: NextRequest) {
       authenticated = false;
     }
   }
-  if (!publicPage && !authenticated) {
+  if (!publicPage && !authenticated && !demoMode) {
     const blocked = path.startsWith('/api/')
       ? NextResponse.json(
           path.startsWith('/api/gateway')
