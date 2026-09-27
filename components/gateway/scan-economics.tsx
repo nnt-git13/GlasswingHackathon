@@ -3,12 +3,12 @@ import { Card, CardHeader, StatusBadge } from '@/components/ui/primitives';
 import { formatCost } from '@/lib/gateway/client';
 import type { ModelCall, Scan } from '@/lib/gateway/schemas';
 
-// TODO(human): set the manual-QA baseline this comparison is measured against.
-// Leave both at 0 to hide the comparison until you have numbers you can source.
-const MANUAL_QA_BASELINE = {
-  minutesPerScenario: 0,
-  loadedHourlyRateUsd: 0,
-};
+import {
+  baselineIsSet,
+  formatDuration,
+  manualEquivalent,
+  manualQaBaseline,
+} from '@/lib/gateway/roi';
 
 // scan.modelCalls already holds the draft's planning calls plus every session
 // call (service.ts seeds it from the draft, then pushes each session call to
@@ -41,12 +41,6 @@ const basisLabel: Record<ModelCall['costBasis'] | 'none', string> = {
   none: 'No model calls recorded',
 };
 
-function formatDuration(ms: number) {
-  if (!Number.isFinite(ms) || ms < 0) return '—';
-  const seconds = Math.round(ms / 1000);
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-}
-
 export function ScanEconomics({ scan }: { scan: Scan }) {
   const totals = tokenTotals(scan.modelCalls);
   const basis = costBasis(scan.modelCalls);
@@ -59,10 +53,10 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
   const costPerSession =
     totals.estimatedCostUsd !== null && finished > 0 ? totals.estimatedCostUsd / finished : null;
 
-  const baselineSet =
-    MANUAL_QA_BASELINE.minutesPerScenario > 0 && MANUAL_QA_BASELINE.loadedHourlyRateUsd > 0;
-  const baselineMinutes = scan.sessions.length * MANUAL_QA_BASELINE.minutesPerScenario;
-  const baselineCost = (baselineMinutes / 60) * MANUAL_QA_BASELINE.loadedHourlyRateUsd;
+  const baselineSet = baselineIsSet();
+  const { minutes: baselineMinutes, costUsd: baselineCost } = manualEquivalent(
+    scan.sessions.length,
+  );
 
   return (
     <Card>
@@ -126,8 +120,8 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
                   {formatDuration(baselineMinutes * 60_000)} · ${baselineCost.toFixed(2)}
                 </strong>
                 <small>
-                  {scan.sessions.length} scenarios × {MANUAL_QA_BASELINE.minutesPerScenario} min at
-                  ${MANUAL_QA_BASELINE.loadedHourlyRateUsd}/hr loaded
+                  {scan.sessions.length} scenarios × {manualQaBaseline.minutesPerScenario} min at $
+                  {manualQaBaseline.loadedHourlyRateUsd}/hr loaded
                 </small>
               </div>
               <div>
