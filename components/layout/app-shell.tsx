@@ -318,6 +318,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/discover' ||
+    pathname === '/scanning' ||
     pathname.startsWith('/auth/')
   )
     return <>{children}</>;

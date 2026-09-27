@@ -3,6 +3,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useGateway } from '@/components/gateway/provider';
 import { securityPolicies } from '@/lib/mock-data/security';
 import { getSecurityPoliciesReport } from '@/lib/security-policies';
+import type { ScannedSite } from '@/lib/agent/types';
+import type { ScanConfig } from '@/lib/agent/contracts';
+import { defaultScanConfig } from '@/lib/agent/intake';
 import type { Environment, SecurityPolicy } from '@/lib/types';
 import { CheckCircle2, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -21,6 +24,10 @@ interface AppState {
   resolve: (id: string) => void;
   verified: string[];
   verify: (id: string) => void;
+  scanSite: ScannedSite | null;
+  setScanSite: (site: ScannedSite | null) => void;
+  scanConfig: ScanConfig;
+  setScanConfig: (config: ScanConfig) => void;
 }
 const AppContext = createContext<AppState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -47,6 +54,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [policies, setPolicies] = useState(securityPolicies);
   const [resolved, setResolved] = useState<string[]>([]);
   const [verified, setVerified] = useState<string[]>([]);
+  const [scanSite, setScanSite] = useState<ScannedSite | null>(null);
+  const [scanConfig, setScanConfig] = useState<ScanConfig>(defaultScanConfig);
   const notify = useCallback((message: string) => setToast(message), []);
   useEffect(() => {
     if (!toast) return;
@@ -86,6 +95,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resolve: (id) => setResolved((ids) => (ids.includes(id) ? ids : [...ids, id])),
         verified,
         verify: (id) => setVerified((ids) => (ids.includes(id) ? ids : [...ids, id])),
+        scanSite,
+        setScanSite,
+        scanConfig,
+        setScanConfig,
       }}
     >
       {children}

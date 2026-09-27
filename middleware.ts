@@ -11,9 +11,11 @@ function copyResponseCookies(from: NextResponse, to: NextResponse) {
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const authEntryPage = ['/', '/login', '/signup'].includes(path);
-  const publicPage = authEntryPage || path === '/discover' || path.startsWith('/auth/');
+  const publicPage = authEntryPage || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
+  // Demo mode keeps the hackathon build usable when Supabase is not configured.
+  const demoMode = !config;
   let authenticated = false;
   if (config) {
     const supabase = createServerClient(config.url, config.key, {
@@ -39,7 +41,7 @@ export async function middleware(request: NextRequest) {
       response,
       NextResponse.redirect(new URL('/discover', request.url)),
     );
-  } else if (!publicPage && !authenticated) {
+  } else if (!publicPage && !authenticated && !demoMode) {
     const blocked = path.startsWith('/api/')
       ? NextResponse.json(
           path.startsWith('/api/gateway')
