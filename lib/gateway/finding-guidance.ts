@@ -11,6 +11,14 @@ export interface FindingGuidance {
   commonCauses: string[];
   /** Short label shown in place of the raw category id. */
   label: string;
+  /**
+   * A ready-to-paste prompt for an AI website builder (Shopify Sidekick, Wix
+   * ADI, Framer AI, Squarespace AI, a coding agent, etc.) that describes the
+   * same fix in instruction form. Kept behind its own toggle in the UI since
+   * most merchants want the plain-language fix first, not implementation
+   * detail.
+   */
+  aiPrompt: string;
 }
 
 // TODO(human): write the guidance for an inconclusive run.
@@ -33,6 +41,8 @@ const neutralGuidance: FindingGuidance = {
     'Key product details shown only inside an image',
     'A page that looks complete to a person but is still loading underneath',
   ],
+  aiPrompt:
+    'On this page, make sure the price, availability, and any variant details a shopper needs are present in the initial page text as soon as it loads, not only after a script finishes running or an image decodes. If content is currently rendered client-side after load, render it server-side or in the initial HTML instead.',
 };
 
 const guidance: Record<Exclude<Finding['category'], 'uncertainty'>, FindingGuidance> = {
@@ -48,6 +58,8 @@ const guidance: Record<Exclude<Finding['category'], 'uncertainty'>, FindingGuida
       'Age gates or "choose your country" screens before the catalog',
       'Chat widgets that expand over the page on load',
     ],
+    aiPrompt:
+      'Find any popup, modal, banner, or overlay that appears on the product and checkout pages of this site (newsletter signups, discount offers, cookie/region banners, age gates, chat widgets). For each one: 1) Make sure it has a visible close control that is a real, keyboard-focusable <button> element with an aria-label such as "Close", not just a background image or an unlabeled icon. 2) Do not trigger any promotional popup on a product page or anywhere in the checkout flow. 3) Delay any remaining promotional popups until a visitor has viewed at least two or three pages, not on first page load. 4) Confirm none of these elements visually cover the "Add to cart" button, the main navigation, or the checkout form fields.',
   },
   goal: {
     label: 'Wrong result',
@@ -61,6 +73,8 @@ const guidance: Record<Exclude<Finding['category'], 'uncertainty'>, FindingGuida
       'Sold-out variants still shown as available',
       'Product details held in an image instead of text',
     ],
+    aiPrompt:
+      'On product pages, ensure price, in-stock status, and variant options (size, color, material) are represented as real, readable text and real selectable form elements, not only as images or decorative labels. When a shopper selects a different variant, update the visible price and stock status immediately to match that exact variant, and disable or hide the "Add to cart" action for any variant that is out of stock. Every variant option must map to a distinct, addressable product/SKU so its price and availability can be read independently of the others.',
   },
   execution: {
     label: 'Run error',
@@ -73,6 +87,8 @@ const guidance: Record<Exclude<Finding['category'], 'uncertainty'>, FindingGuida
       'Third-party scripts (reviews, chat, analytics) blocking the page',
       'An intermittent server error on one template',
     ],
+    aiPrompt:
+      'Investigate why this page occasionally fails to finish loading or returns an error. Check for: 1) Third-party scripts (chat widgets, review widgets, analytics, tracking pixels) that block the main thread or delay the page from signaling it is ready. 2) Slow server response times or timeouts on this specific template. 3) Any script that throws an unhandled error on this page. Where possible, load third-party scripts asynchronously so they cannot block or delay the core page content and the checkout flow.',
   },
 };
 
