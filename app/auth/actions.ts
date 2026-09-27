@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { supabaseConfig } from '@/lib/supabase/config';
+import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
 import { safeNextPath } from '@/lib/auth/redirect';
 
 type Result = { error?: string; message?: string; success?: boolean; url?: string };
@@ -23,8 +23,8 @@ export async function authenticate(
     return { error: 'Enter a password of at most 128 characters.' };
   if (mode === 'signup' && (password.length < 8 || fullName.length < 1 || fullName.length > 100))
     return { error: 'Enter your name and a password with at least 8 characters.' };
-  // Demo mode: no account service configured, accept well-formed credentials.
-  if (!supabaseConfig()) return { success: true };
+  // Explicit hackathon demo mode accepts well-formed local credentials without Supabase.
+  if (demoAuthEnabled()) return { success: true };
   try {
     const supabase = await createClient();
     if (mode === 'signup') {

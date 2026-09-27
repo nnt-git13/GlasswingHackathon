@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { supabaseConfig } from '@/lib/supabase/config';
+import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
 import { safeNextPath } from '@/lib/auth/redirect';
 
 function copyResponseCookies(from: NextResponse, to: NextResponse) {
@@ -14,10 +14,10 @@ export async function middleware(request: NextRequest) {
   const publicPage = authEntryPage || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
-  // Demo mode keeps the hackathon build usable when Supabase is not configured.
-  const demoMode = !config;
+  // Demo auth is explicit so stale/unreachable Supabase configuration cannot block the hackathon flow.
+  const demoMode = demoAuthEnabled();
   let authenticated = false;
-  if (config) {
+  if (config && !demoMode) {
     const supabase = createServerClient(config.url, config.key, {
       cookies: {
         getAll: () => request.cookies.getAll(),

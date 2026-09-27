@@ -1,3 +1,7 @@
+export function demoAuthEnabled() {
+  return process.env.GATEWAY_DEMO_AUTH === 'true';
+}
+
 export function supabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
