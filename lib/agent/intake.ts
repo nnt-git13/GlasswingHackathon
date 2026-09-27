@@ -1,5 +1,6 @@
 import { buyerPersonas, defaultGoals, storefrontOrigin } from './personas';
 import type { IntakeContext, ScanConfig } from './contracts';
+import { shopperInterests } from './interests';
 
 export const focusOptions = [
   'Discovery',
@@ -31,6 +32,7 @@ export const environments = ['Production', 'Staging'];
 export const scanDepths = ['Quick', 'Standard', 'Deep'];
 
 export const defaultScanConfig: ScanConfig = {
+  interests: [],
   focuses: ['Discovery', 'Checkout'],
   personaIds: buyerPersonas.map((persona) => persona.id),
   budget: 250,
@@ -75,11 +77,21 @@ export async function buildIntakeContext(
             ? 'Accessories'
             : 'General';
   const rest = urlMatch ? trimmed.replace(urlMatch[0], '').trim() : trimmed;
-  const goals = urlMatch && rest.length < 4 ? defaultGoals : [trimmed];
+  const interests = shopperInterests.filter((interest) => config.interests?.includes(interest.id));
+  const goals =
+    urlMatch && rest.length < 4
+      ? interests.length
+        ? interests.map(
+            (interest) =>
+              `${interest.goal} within ${config.currency} ${budget}. Only choose products supported by the store's catalog; report when no suitable option exists.`,
+          )
+        : defaultGoals
+      : [trimmed];
   const personas = config.personaIds.length
     ? buyerPersonas.filter((persona) => config.personaIds.includes(persona.id))
     : buyerPersonas;
   const constraints = [
+    ...interests.map((interest) => `Shopper interest: ${interest.label}`),
     `Focus: ${config.focuses.join(', ') || 'General readiness'}`,
     `Depth: ${config.depth}`,
     `Budget ≤ ${config.currency} ${budget}`,
@@ -88,6 +100,7 @@ export async function buildIntakeContext(
     ...config.guardrails.map((guardrail) => `Guardrail: ${guardrail}`),
   ];
   return {
+    interests: interests.map((interest) => interest.id),
     storefrontUrl,
     storefrontLabel,
     category,

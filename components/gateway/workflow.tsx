@@ -31,7 +31,7 @@ type DraftSummary = Pick<
   Draft,
   'id' | 'merchantUrl' | 'revision' | 'approvedAt' | 'fixture' | 'createdAt'
 >;
-export function GatewayWorkflow() {
+export function GatewayWorkflow({ shopperInterests = [] }: { shopperInterests?: string[] }) {
   const { execute, activeScan, error: runError } = useGateway();
   const [environments, setEnvironments] = useState<EnvironmentOption[]>([]);
   const [environmentId, setEnvironmentId] = useState('');
@@ -99,6 +99,11 @@ export function GatewayWorkflow() {
       JSON.stringify(scenarios) !== JSON.stringify(draft.scenarios));
   const running = !!activeScan && ['queued', 'running'].includes(activeScan.status);
   const inspecting = busy.startsWith('Inspecting storefront');
+  const showingFinishedScan =
+    !inspecting &&
+    !!activeScan &&
+    (scanId === activeScan.id || activeScan.draft.id === draft?.id) &&
+    !['queued', 'running'].includes(activeScan.status);
   async function perform(label: string, task: () => Promise<void>) {
     if (lock.current) return;
     lock.current = true;
@@ -128,7 +133,7 @@ export function GatewayWorkflow() {
       const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
       const value = await gatewayRequest<Draft>('/drafts', {
         method: 'POST',
-        body: { merchantUrl: normalized, environmentId },
+        body: { merchantUrl: normalized, environmentId, shopperInterests },
       });
       adoptDraft(value);
       setSavedDrafts((current) => [value, ...current.filter((item) => item.id !== value.id)]);
@@ -191,7 +196,17 @@ export function GatewayWorkflow() {
                 value={url}
                 onChange={(event) => {
                   changeTarget();
-                  setUrl(event.target.value);
+                  const value = event.target.value;
+                  setUrl(value);
+                  try {
+                    const origin = new URL(
+                      /^https?:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`,
+                    ).origin;
+                    const matchingEnvironment = environments.find((item) => item.origin === origin);
+                    if (matchingEnvironment) setEnvironmentId(matchingEnvironment.id);
+                  } catch {
+                    // Keep the selected environment while the URL is being typed.
+                  }
                 }}
               />
             </label>
@@ -274,9 +289,18 @@ export function GatewayWorkflow() {
         activeScan &&
         (scanId === activeScan.id || activeScan.draft.id === draft?.id) && (
           <div ref={executionRef} className={`gateway-stack ${styles.executionAnchor}`}>
-            <Button asChild variant="outline">
-              <Link href={`/scan?scanId=${activeScan.id}`}>Open saved scan</Link>
-            </Button>
+            <div className={styles.resultActions}>
+              {showingFinishedScan && (
+                <Button asChild>
+                  <Link href="/dashboard">
+                    Open dashboard <ArrowUpRight size={14} />
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline">
+                <Link href={`/scan?scanId=${activeScan.id}`}>Open saved scan</Link>
+              </Button>
+            </div>
             <ScanResults scan={activeScan} />
           </div>
         )}
@@ -738,14 +762,16 @@ export function GatewayWorkflow() {
         </>
       )}
       <ErrorNotice message={runError} />
-      <div className="gateway-toolbar">
-        <Button asChild variant="outline">
-          <Link href="/dashboard">Open dashboard</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/sessions">Browse sessions</Link>
-        </Button>
-      </div>
+      {!showingFinishedScan && (
+        <div className="gateway-toolbar">
+          <Button asChild variant="outline">
+            <Link href="/dashboard">Open dashboard</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/sessions">Browse sessions</Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

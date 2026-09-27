@@ -8,10 +8,13 @@ import {
   BookOpen,
   CheckCircle2,
   Compass,
+  CreditCard,
   Globe2,
+  PencilLine,
   Search,
   ShieldAlert,
   ShoppingBag,
+  ShoppingCart,
 } from 'lucide-react';
 import styles from './replay.module.css';
 import { ReplayObservation } from './replay-observation';
@@ -27,16 +30,27 @@ import {
 import { formatCost, formatTime } from '@/lib/gateway/client';
 import type { Session } from '@/lib/gateway/schemas';
 import { ErrorNotice, FixtureBadge, OutcomeBadge, useGatewayData } from './shared';
-const actionLabels = {
+const actionLabels: Record<NonNullable<Session['trace'][number]['action']>['type'], string> = {
   navigate: 'Browse page',
   search: 'Search the store',
   inspect_product: 'Inspect product',
+  add_to_cart: 'Add to cart',
+  view_cart: 'Open cart',
+  begin_checkout: 'Start checkout',
+  fill_checkout: 'Fill checkout details',
   stop: 'Finish shopping',
 };
-const actionIcons = {
+const actionIcons: Record<
+  NonNullable<Session['trace'][number]['action']>['type'],
+  typeof Compass
+> = {
   navigate: Compass,
   search: Search,
   inspect_product: ShoppingBag,
+  add_to_cart: ShoppingCart,
+  view_cart: ShoppingCart,
+  begin_checkout: CreditCard,
+  fill_checkout: PencilLine,
   stop: CheckCircle2,
 };
 export function GatewayReplay({ id }: { id: string }) {

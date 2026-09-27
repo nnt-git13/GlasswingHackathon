@@ -63,6 +63,12 @@ test.beforeAll(async () => {
     if (request.url === '/' && request.headers.cookie) leakedCookies++;
     response.setHeader('Content-Type', 'text/html');
     response.setHeader('Set-Cookie', 'shopper=isolated; Path=/');
+    if (request.url === '/products/navigation-heavy') {
+      response.end(
+        `<html><body>${'<a href="/">Menu</a>'.repeat(150)}<a href="/products/pack">Trail Pack</a></body></html>`,
+      );
+      return;
+    }
     if (request.url?.startsWith('/products/aggregate')) {
       response.end(
         `<html><body><h1>Juice</h1><script type="application/ld+json">${JSON.stringify({
@@ -156,6 +162,48 @@ test('browser restricts URLs, credentials, mutation queries, and private network
   await expect(
     StorefrontBrowser.open({ ...env, allowLoopback: false }, AbortSignal.timeout(5000)),
   ).rejects.toThrow('prohibited');
+});
+
+test('checkout paths open only for an environment that opted in, and never the dangerous ones', () => {
+  const readOnly = environment('test');
+  const checkoutEnabled = {
+    ...readOnly,
+    checkout: { enabled: true, pathPrefixes: ['/cart', '/checkout'] },
+  };
+
+  // Opting in must not be a way to reach an account, the admin surface, an
+  // existing order, or a payment page. These stay blocked either way.
+  for (const path of ['/account', '/account/login', '/admin', '/orders/1234', '/payments']) {
+    expect(() => allowedUrl(`${origin}${path}`, readOnly)).toThrow();
+    expect(() => allowedUrl(`${origin}${path}`, checkoutEnabled)).toThrow();
+  }
+
+  // Cart and checkout are blocked by default and reachable once opted in.
+  for (const path of ['/cart', '/checkout']) {
+    expect(() => allowedUrl(`${origin}${path}`, readOnly)).toThrow();
+    expect(allowedUrl(`${origin}${path}`, checkoutEnabled)).toBe(`${origin}${path}`);
+  }
+
+  // Checkout carries server-issued tokens, so it is exempt from the
+  // fail-closed query rule. Everything outside it still fails closed.
+  expect(allowedUrl(`${origin}/checkout/abc?step=contact_information`, checkoutEnabled)).toContain(
+    'step=contact_information',
+  );
+  expect(() => allowedUrl(`${origin}/products/pack?step=contact_information`, checkoutEnabled)).toThrow();
+
+  // Opting in never widens the origin.
+  expect(() => allowedUrl('https://evil.example.com/cart', checkoutEnabled)).toThrow();
+});
+
+test('repeated navigation links do not hide product links from shopper observations', async () => {
+  const browser = await StorefrontBrowser.open(environment('test'), AbortSignal.timeout(20_000));
+  try {
+    const observation = await browser.observe(`${origin}/products/navigation-heavy`);
+    expect(observation.links.filter((link) => link.url === `${origin}/`)).toHaveLength(1);
+    expect(observation.links.some((link) => link.url === `${origin}/products/pack`)).toBe(true);
+  } finally {
+    await browser.close();
+  }
 });
 
 test('read-only query rules are scoped and attribution is removed before navigation', () => {

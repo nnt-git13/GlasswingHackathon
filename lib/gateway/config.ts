@@ -19,6 +19,23 @@ const environmentSchema = z.strictObject({
       }),
     )
     .optional(),
+  /**
+   * Opt-in checkout testing. Omitted or disabled leaves the environment
+   * strictly read-only: cart and checkout paths stay blocked and every
+   * non-GET request is still refused at the network layer.
+   *
+   * Enable this only for a storefront where a test order is harmless — a
+   * Shopify development store with Bogus Gateway, or a staging clone. On a
+   * live store the agent will create real carts and real abandoned-checkout
+   * records.
+   */
+  checkout: z
+    .strictObject({
+      enabled: z.boolean(),
+      /** Paths the agent may reach and POST to once checkout testing is on. */
+      pathPrefixes: z.array(z.string().startsWith('/')).min(1),
+    })
+    .optional(),
   allowLoopback: z.boolean().default(false),
 });
 export type TestEnvironment = z.infer<typeof environmentSchema>;
