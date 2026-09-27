@@ -221,6 +221,7 @@ export function validateAction(
     );
 }
 export interface ShopperBrowser {
+  screenshot?(): Promise<Buffer>;
   observe(url: string, kind?: 'page' | 'product'): Promise<Observation>;
   execute(action: Action): Promise<Observation | null>;
   close(): Promise<void>;
@@ -461,6 +462,15 @@ export class StorefrontBrowser implements ShopperBrowser {
     this.cleanup();
     await this.context.close().catch(() => {});
     await this.browser.close();
+  }
+  async screenshot() {
+    return this.page.screenshot({
+      type: 'jpeg',
+      quality: 65,
+      fullPage: false,
+      timeout: 2500,
+      animations: 'disabled',
+    });
   }
 }
 export const browserFactory: BrowserFactory = (env, signal) => StorefrontBrowser.open(env, signal);

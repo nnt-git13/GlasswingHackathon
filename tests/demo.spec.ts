@@ -79,13 +79,17 @@ test('analytics date range and integration connection', async ({ page }) => {
   await expect(page.getByText('across 16,407 sessions')).toBeVisible();
   await page.goto('/integrations');
   await page.getByLabel('Search integrations').fill('Stripe');
-  await expect(page.locator('.integration-card')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Connect', exact: true }).click();
+  const stripe = page.getByRole('article', { name: 'Stripe', exact: true });
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await stripe.getByRole('button', { name: 'Configure Stripe' }).click();
   await page.getByLabel('Connection name').fill('Evertrail payments');
-  await page.getByLabel('Account or endpoint').fill('acct_demo_evertrail');
-  await page.getByRole('button', { name: 'Save connection' }).click();
-  await expect(page.locator('.integration-card')).toContainText('Connected');
-  await expect(page.getByRole('button', { name: 'Configure' })).toBeVisible();
+  await page.getByLabel('Stripe dashboard URL').fill('https://dashboard.stripe.com/test/dashboard');
+  await page.getByRole('button', { name: 'Save configuration' }).click();
+  await expect(stripe).toContainText('Configured');
+  await expect(stripe.getByRole('link', { name: 'Open Stripe', exact: true })).toHaveAttribute(
+    'href',
+    'https://dashboard.stripe.com/test/dashboard',
+  );
 });
 
 test('tablet and mobile layouts stay within viewport, navigation works', async ({ page }) => {

@@ -166,6 +166,21 @@ test('authenticated merchant inspects, edits, approves, and runs the actual Gate
     timeout: 30_000,
   });
   await expect(page.getByRole('button', { name: 'Run approved scan' })).toBeDisabled();
+  await page.getByRole('heading', { name: 'Review customer archetypes' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/gateway-review-desktop.png', animations: 'disabled' });
+  await page
+    .getByRole('region', { name: 'Shopper archetype 1', exact: true })
+    .getByText('Why this shopper?')
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Shopper archetype 1', exact: true }).locator('details'),
+  ).toHaveAttribute('open', '');
+  await page.setViewportSize({ width: 390, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('heading', { name: 'Review customer archetypes' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/gateway-review-mobile.png', animations: 'disabled' });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
   await page.getByLabel('Archetype 1 name').fill('Patient comparison shopper');
   await page
     .getByLabel('Scenario 1 goal', { exact: true })
@@ -195,6 +210,26 @@ test('authenticated merchant inspects, edits, approves, and runs the actual Gate
     'passed',
   ]);
   expect(savedScan.fixture).toBe(true);
+  const preview = page.getByRole('region', { name: 'Live browser preview' });
+  await expect(preview.getByRole('img', { name: /^Captured browser view/ })).toBeVisible();
+  const imageUrl = await preview
+    .getByRole('img', { name: /^Captured browser view/ })
+    .getAttribute('src');
+  const imageResponse = await page.request.get(`${appOrigin}${imageUrl}`);
+  expect(imageResponse.status()).toBe(200);
+  expect(imageResponse.headers()['content-type']).toBe('image/jpeg');
+  expect(imageResponse.headers()['cache-control']).toBe('private, no-store');
+  const bytes = await imageResponse.body();
+  expect(bytes.subarray(0, 2).toString('hex')).toBe('ffd8');
+  expect((await fetch(`${appOrigin}${imageUrl}`)).status).toBe(401);
+  await preview.getByRole('button', { name: /Shopper 2/ }).click();
+  await expect(preview.getByRole('img', { name: /^Captured browser view/ })).toHaveAttribute(
+    'src',
+    new RegExp(savedScan.sessions[1].id),
+  );
+  await preview.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/gateway-live-browser.png', animations: 'disabled' });
+
   await page.screenshot({ path: 'test-results/gateway-ui/approved-run.png', fullPage: true });
 });
 
@@ -322,8 +357,12 @@ test('merged main retains demand simulation, visual demo replay and reporting pa
   await expect(
     page.getByText('Demo replay — illustrative storefront actions, not a recorded Gateway scan.'),
   ).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Investigation view', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Safety controls held', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Investigation view', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Safety controls held', exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Watch visual replay' }).click();
   await expect(page.getByRole('dialog')).toContainText('Visual replay · SES-10482');
   for (const [route, heading] of [
@@ -460,4 +499,49 @@ test('all workspace and authentication pages share responsive visual layouts', a
   } finally {
     await anonymous.close();
   }
+});
+
+test('scan execution shows measured progress and interrupted states without implying success', async ({
+  page,
+}) => {
+  const runningScan: Scan = {
+    ...savedScan,
+    status: 'running',
+    completedAt: null,
+    sessions: savedScan.sessions.map((session, index) =>
+      index === 0
+        ? session
+        : {
+            ...session,
+            status: index === 1 ? 'running' : 'queued',
+            completedAt: null,
+            evaluation: null,
+            trace: index === 1 ? session.trace.slice(0, 1) : [],
+          },
+    ),
+  };
+  await page.route(`**/api/gateway/scans/${savedScan.id}`, async (route) => {
+    await route.fulfill({ json: { apiVersion: 'v1', data: runningScan } });
+  });
+  await page.goto(`${appOrigin}/scan?scanId=${savedScan.id}`);
+  await expect(page.getByRole('heading', { name: 'Shoppers are exploring' })).toBeVisible();
+  await expect(
+    page.getByRole('progressbar', { name: 'Shopping session progress' }),
+  ).toHaveAttribute('aria-valuenow', '1');
+  await expect(
+    page.getByRole('region', { name: 'Shopper sessions' }).getByRole('article'),
+  ).toHaveCount(3);
+  await page.getByRole('region', { name: 'Scan execution' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/gateway-execution-desktop.png', animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '/tmp/gateway-execution-mobile.png', animations: 'disabled' });
+  runningScan.status = 'interrupted';
+  runningScan.sessions[1].status = 'interrupted';
+  await expect(page.getByRole('heading', { name: 'Scan needs attention' })).toBeVisible({
+    timeout: 10000,
+  });
+  await expect(
+    page.getByRole('progressbar', { name: 'Shopping session progress' }),
+  ).toHaveAttribute('aria-valuenow', '2');
 });

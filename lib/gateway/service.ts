@@ -326,6 +326,19 @@ export class GatewayService {
       await save();
     };
     const trace = async (event: Omit<TraceEvent, 'id' | 'sequence' | 'timestamp'>) => {
+      if (event.observation && browser?.screenshot) {
+        try {
+          const image = await browser.screenshot();
+          await this.store.saveScreenshot(scan.ownerId, event.observation.id, image);
+          event.observation.screenshotAvailable = true;
+        } catch (error) {
+          console.warn('Gateway screenshot capture failed', {
+            scanId: scan.id,
+            observationId: event.observation.id,
+            message: error instanceof Error ? error.message : 'Unknown capture error',
+          });
+        }
+      }
       session.trace.push({
         ...event,
         id: randomUUID(),
@@ -469,7 +482,17 @@ export class GatewayService {
   }
 }
 
-const globalGateway = globalThis as typeof globalThis & { gatewayService?: GatewayService };
+// Next.js keeps globalThis during hot reloads. Version the cached runner so a
+// runner created before screenshot support cannot keep executing stale code.
+const runnerVersion = 2;
+const globalGateway = globalThis as typeof globalThis & {
+  gatewayService?: GatewayService;
+  gatewayServiceVersion?: number;
+};
 export function gatewayService() {
-  return (globalGateway.gatewayService ||= new GatewayService());
+  if (!globalGateway.gatewayService || globalGateway.gatewayServiceVersion !== runnerVersion) {
+    globalGateway.gatewayService = new GatewayService();
+    globalGateway.gatewayServiceVersion = runnerVersion;
+  }
+  return globalGateway.gatewayService;
 }

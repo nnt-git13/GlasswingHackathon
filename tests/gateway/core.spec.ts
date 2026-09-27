@@ -4,8 +4,28 @@ import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
-import { GatewayService, validatePlan } from '../../lib/gateway/service';
+import { GatewayService, gatewayService, validatePlan } from '../../lib/gateway/service';
 import { FileStore } from '../../lib/gateway/store';
+
+test('hot reload replaces an unversioned cached runner and reuses the current runner', () => {
+  const cache = globalThis as typeof globalThis & {
+    gatewayService?: GatewayService;
+    gatewayServiceVersion?: number;
+  };
+  const previous = cache.gatewayService;
+  const previousVersion = cache.gatewayServiceVersion;
+  try {
+    const stale = new GatewayService();
+    cache.gatewayService = stale;
+    delete cache.gatewayServiceVersion;
+    const current = gatewayService();
+    expect(current).not.toBe(stale);
+    expect(gatewayService()).toBe(current);
+  } finally {
+    cache.gatewayService = previous;
+    cache.gatewayServiceVersion = previousVersion;
+  }
+});
 import {
   allowedUrl,
   safeAddress,
@@ -255,6 +275,37 @@ test('full scan runs isolated shoppers, independently evaluates decline, persist
   await expect(service.runScan('merchant-a', scan.id)).rejects.toThrow('runs once');
   const reloaded = await new FileStore(directory).get('scan', 'merchant-a', scan.id);
   expect(reloaded.sessions[0].trace).toEqual(completed.sessions[0].trace);
+  const observed = completed.sessions[0].trace.find(
+    (event) => event.observation?.screenshotAvailable,
+  )!.observation!;
+  const screenshotPath = `sessions/${completed.sessions[0].id}/screenshot`;
+  const request = new Request(
+    `http://gateway.test/api/gateway/${screenshotPath}?observation=${observed.id}`,
+  );
+  const image = await handleGateway(
+    request,
+    screenshotPath.split('/'),
+    async () => 'merchant-a',
+    service,
+  );
+  expect(image.status).toBe(200);
+  expect(image.headers.get('content-type')).toBe('image/jpeg');
+  expect((await image.arrayBuffer()).byteLength).toBeGreaterThan(100);
+  const otherOwner = await handleGateway(
+    request,
+    screenshotPath.split('/'),
+    async () => 'merchant-b',
+    service,
+  );
+  expect(otherOwner.status).toBe(404);
+  const wrongObservation = await handleGateway(
+    new Request(`http://gateway.test/api/gateway/${screenshotPath}?observation=not-an-observation`),
+    screenshotPath.split('/'),
+    async () => 'merchant-a',
+    service,
+  );
+  expect(wrongObservation.status).toBe(404);
+
   for (const path of [
     'dashboard',
     'sessions',

@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-dev/
 out/
 *.tsbuildinfo
 playwright-report/
@@ -10,3 +11,4 @@ test-results/
 .gateway-data/
 
 .next-gateway-tests/
+.next-integrations-tests/

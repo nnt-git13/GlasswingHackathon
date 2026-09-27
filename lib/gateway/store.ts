@@ -103,6 +103,22 @@ export class FileStore {
     );
     await rename(temp, path);
   }
+  async saveScreenshot(ownerId: string, id: string, image: Buffer) {
+    const path = this.path(ownerId, 'scan', id).replace(/\.json$/, '.jpg');
+    await mkdir(this.folder(ownerId), { recursive: true, mode: 0o700 });
+    const temporary = `${path}.${randomUUID()}.tmp`;
+    await writeFile(temporary, image, { mode: 0o600 });
+    await rename(temporary, path);
+  }
+  async screenshot(ownerId: string, id: string) {
+    try {
+      return await readFile(this.path(ownerId, 'scan', id).replace(/\.json$/, '.jpg'));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+        throw new GatewayError('NOT_FOUND', 'Screenshot not available.', 404);
+      throw error;
+    }
+  }
   async listCalls(
     ownerId: string,
   ): Promise<(ModelCall & { operationId: string; recordedAt: string })[]> {

@@ -100,6 +100,7 @@ export type Scenario = z.infer<typeof scenarioSchema>;
 export type Action = z.infer<typeof actionSchema>;
 export type SemanticVerdict = z.infer<typeof verdictSchema>;
 export interface Observation {
+  screenshotAvailable?: boolean;
   id: string;
   timestamp: string;
   url: string;

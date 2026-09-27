@@ -2,6 +2,18 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArrowUpRight,
+  BookOpen,
+  ChevronDown,
+  FileSearch,
+  Globe2,
+  ListChecks,
+  ShieldCheck,
+  UsersRound,
+} from 'lucide-react';
+import { ArchetypeCard } from './archetype-card';
+import styles from './review.module.css';
+import {
   Button,
   Card,
   CardHeader,
@@ -19,22 +31,6 @@ type DraftSummary = Pick<
   Draft,
   'id' | 'merchantUrl' | 'revision' | 'approvedAt' | 'fixture' | 'createdAt'
 >;
-const choices = {
-  expertise: ['novice', 'intermediate', 'expert'],
-  budgetSensitivity: ['low', 'medium', 'high'],
-  comparisonDepth: ['shallow', 'moderate', 'deep'],
-  patience: ['low', 'medium', 'high'],
-  substitutionTolerance: ['none', 'low', 'high'],
-  discoveryStrategy: ['search', 'browse', 'mixed'],
-};
-const labels = {
-  expertise: 'Expertise',
-  budgetSensitivity: 'Budget sensitivity',
-  comparisonDepth: 'Comparison depth',
-  patience: 'Patience',
-  substitutionTolerance: 'Substitution tolerance',
-  discoveryStrategy: 'Discovery strategy',
-};
 export function GatewayWorkflow() {
   const { execute, activeScan, error: runError } = useGateway();
   const [environments, setEnvironments] = useState<EnvironmentOption[]>([]);
@@ -49,6 +45,10 @@ export function GatewayWorkflow() {
   const [error, setError] = useState('');
   const [scanId, setScanId] = useState<string | null>(null);
   const lock = useRef(false);
+  const executionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scanId) executionRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [scanId]);
   function adoptDraft(value: Draft) {
     setDraft(value);
     setArchetypes(value.archetypes);
@@ -98,6 +98,7 @@ export function GatewayWorkflow() {
     (JSON.stringify(archetypes) !== JSON.stringify(draft.archetypes) ||
       JSON.stringify(scenarios) !== JSON.stringify(draft.scenarios));
   const running = !!activeScan && ['queued', 'running'].includes(activeScan.status);
+  const inspecting = busy.startsWith('Inspecting storefront');
   async function perform(label: string, task: () => Promise<void>) {
     if (lock.current) return;
     lock.current = true;
@@ -152,14 +153,19 @@ export function GatewayWorkflow() {
     });
   return (
     <div className="gateway-stack">
-      <Card className="gateway-panel">
-        <div className="gateway-entry-heading">
-          <div className="eyebrow">NEW TEST RUN</div>
-          <h2>Choose your storefront</h2>
-          <p>Select an authorized environment and the page you want to explore.</p>
+      <Card className={`gateway-panel ${styles.entry}`}>
+        <div className={`gateway-entry-heading ${styles.entryHeading}`}>
+          <span className={styles.entryIcon}>
+            <Globe2 size={23} />
+          </span>
+          <div>
+            <div className="eyebrow">NEW TEST RUN</div>
+            <h2>Choose your storefront</h2>
+            <p>Select an authorized environment and the page you want to explore.</p>
+          </div>
         </div>
         <fieldset className="gateway-review" disabled={!!busy || running}>
-          <div className="gateway-form-row">
+          <div className={`gateway-form-row ${styles.targetFields}`}>
             <label>
               Test environment
               <Select
@@ -193,13 +199,14 @@ export function GatewayWorkflow() {
               onClick={() => void inspect()}
               disabled={!!busy || running || !url.trim() || !environmentId}
             >
+              <FileSearch size={15} />
               Inspect storefront
             </Button>
           </div>
         </fieldset>
-        <p>
-          Choose an authorized storefront, then review the proposed shoppers and goals before
-          running them.
+        <p className={styles.entryNote}>
+          <ShieldCheck size={14} />
+          You’ll review the shoppers and goals before any test runs.
         </p>
         {!busy && !environments.length && !error && (
           <EmptyState
@@ -214,12 +221,66 @@ export function GatewayWorkflow() {
           <Link href="/login">Sign in</Link>
         </Button>
       )}
-      {busy && (
-        <div className="gateway-loading" role="status">
-          <LoadingLabel>{busy}</LoadingLabel>
-        </div>
+      {inspecting ? (
+        <section
+          className={styles.inspectionLoading}
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className={styles.loadingTop}>
+            <span className={styles.loadingIcon}>
+              <FileSearch size={25} />
+            </span>
+            <div>
+              <span className={styles.loadingEyebrow}>PREPARING YOUR TEST PLAN</span>
+              <h2>Getting to know your storefront</h2>
+              <p>We’re reading your store and building shoppers and goals for you to review.</p>
+            </div>
+            <span className={styles.loadingPulse}>In progress</span>
+          </div>
+          <div className={styles.loadingTrack} aria-hidden="true">
+            <span />
+          </div>
+          <div className={styles.loadingTasks}>
+            <div>
+              <Globe2 size={19} />
+              <strong>Store evidence</strong>
+              <span>Pages, products, and policies</span>
+            </div>
+            <div>
+              <UsersRound size={19} />
+              <strong>Shopper profiles</strong>
+              <span>Behaviors grounded in your store</span>
+            </div>
+            <div>
+              <ListChecks size={19} />
+              <strong>Shopping goals</strong>
+              <span>A proposed plan for your review</span>
+            </div>
+          </div>
+          <p className={styles.loadingNote}>
+            <ShieldCheck size={14} /> You’ll approve the plan before shoppers start their test runs.
+          </p>
+        </section>
+      ) : (
+        busy && (
+          <div className="gateway-loading" role="status">
+            <LoadingLabel>{busy}</LoadingLabel>
+          </div>
+        )
       )}
-      {!draft && savedDrafts.length > 0 && (
+      {!inspecting &&
+        activeScan &&
+        (scanId === activeScan.id || activeScan.draft.id === draft?.id) && (
+          <div ref={executionRef} className={`gateway-stack ${styles.executionAnchor}`}>
+            <Button asChild variant="outline">
+              <Link href={`/scan?scanId=${activeScan.id}`}>Open saved scan</Link>
+            </Button>
+            <ScanResults scan={activeScan} />
+          </div>
+        )}
+      {!inspecting && !draft && savedDrafts.length > 0 && (
         <Card>
           <CardHeader title="Continue a saved test plan" />
           <div className="gateway-panel">
@@ -240,28 +301,54 @@ export function GatewayWorkflow() {
           </div>
         </Card>
       )}
-      {draft && (
+      {!inspecting && draft && (
         <>
-          <Card>
-            <CardHeader
-              title={draft.context.merchantName}
-              subtitle={draft.context.description}
-              action={<FixtureBadge fixture={draft.fixture} />}
-            />
-            <div className="gateway-panel">
-              <div className="gateway-toolbar">
+          <Card className={styles.context}>
+            <div className={styles.contextTop}>
+              <span className={styles.siteIcon}>
+                <Globe2 size={24} />
+              </span>
+              <div className={styles.siteTitle}>
+                <span className={styles.kicker}>STOREFRONT INSIGHTS</span>
+                <h2>{draft.context.merchantName.replace(/\s*\[[0-9a-f-]{36}\]/gi, '')}</h2>
+                <a href={draft.merchantUrl} target="_blank" rel="noopener noreferrer">
+                  {new URL(draft.merchantUrl).hostname}
+                  <ArrowUpRight size={12} />
+                </a>
+              </div>
+              <div className={styles.contextBadges}>
                 <StatusBadge tone={draft.approvedAt && !dirty ? 'green' : 'amber'}>
                   {draft.approvedAt && !dirty ? 'Approved' : 'Review required'}
                 </StatusBadge>
-                <span>Revision {draft.revision}</span>
-                <span>{draft.evidence.length} sampled pages</span>
+                <FixtureBadge fixture={draft.fixture} />
               </div>
-              <p>
-                These shopper archetypes are hypotheses inferred from site evidence, not measured
-                demographics or traffic shares.
-              </p>
+            </div>
+            <p className={styles.siteDescription}>
+              {draft.context.description.replace(/\s*\[[0-9a-f-]{36}\]/gi, '')}
+            </p>
+            <div className={styles.summaryStats}>
+              <span>
+                <UsersRound size={16} />
+                <strong>{archetypes.length}</strong>
+                {archetypes.length === 1 ? 'shopper archetype' : 'shopper archetypes'}
+              </span>
+              <span>
+                <ListChecks size={16} />
+                <strong>{scenarios.length}</strong>shopping scenarios
+              </span>
+              <span>
+                <BookOpen size={16} />
+                <strong>{draft.evidence.length}</strong>sampled pages
+              </span>
+              <small>Revision {draft.revision}</small>
+            </div>
+            <div className={styles.evidenceBody}>
               <details>
-                <summary>Site evidence and sampling limits</summary>
+                <summary className={styles.evidenceSummary}>
+                  <BookOpen size={15} />
+                  <span>Site evidence and sampling limits</span>
+                  <ChevronDown size={15} />
+                </summary>
                 {draft.context.claims.map((claim, i) => (
                   <p key={i}>
                     {claim.claim}{' '}
@@ -289,87 +376,109 @@ export function GatewayWorkflow() {
             </div>
           </Card>
           <fieldset className="gateway-review" disabled={!!busy || running}>
-            <Card>
-              <CardHeader
-                title="Review customer archetypes"
-                subtitle="Edit the behavioral hypotheses to match the customers you want to test."
-              />
-              <div className="gateway-panel gateway-stack">
+            <section className={styles.reviewSection} aria-labelledby="archetype-heading">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className={styles.step}>01</span>
+                  <div>
+                    <h2 id="archetype-heading">Review customer archetypes</h2>
+                    <p>Fine-tune how each shopper discovers, compares, and decides.</p>
+                  </div>
+                </div>
+                <span className={styles.count}>
+                  {archetypes.length} {archetypes.length === 1 ? 'shopper' : 'shoppers'}
+                </span>
+              </div>
+              <div className={styles.hypothesisNote}>
+                <span className={styles.noteDot} />
+                <p>
+                  Inferred from your storefront’s content. These are test hypotheses, not measured
+                  customer demographics.
+                </p>
+              </div>
+              <div className={styles.personaGrid}>
                 {archetypes.map((archetype, index) => (
-                  <section className="gateway-editor" key={archetype.id}>
-                    <label>
-                      Archetype name
-                      <input
-                        aria-label={`Archetype ${index + 1} name`}
-                        value={archetype.name}
-                        onChange={(event) =>
-                          setArchetypes((all) =>
-                            all.map((item, i) =>
-                              i === index ? { ...item, name: event.target.value } : item,
-                            ),
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      Behavioral hypothesis
-                      <textarea
-                        value={archetype.hypothesis}
-                        onChange={(event) =>
-                          setArchetypes((all) =>
-                            all.map((item, i) =>
-                              i === index ? { ...item, hypothesis: event.target.value } : item,
-                            ),
-                          )
-                        }
-                      />
-                    </label>
-                    <div className="gateway-form-grid">
-                      {(Object.keys(choices) as (keyof typeof choices)[]).map((key) => (
-                        <label key={key}>
-                          {labels[key]}
-                          <Select
-                            label={`${archetype.name} ${labels[key]}`}
-                            options={choices[key]}
-                            value={archetype[key]}
-                            onChange={(value) =>
-                              setArchetypes((all) =>
-                                all.map((item, i) =>
-                                  i === index ? ({ ...item, [key]: value } as Archetype) : item,
-                                ),
-                              )
-                            }
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <small>Evidence: {archetype.provenance.rationale}</small>
-                  </section>
+                  <ArchetypeCard
+                    key={archetype.id}
+                    archetype={archetype}
+                    index={index}
+                    onChange={(patch) =>
+                      setArchetypes((all) =>
+                        all.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+                      )
+                    }
+                  />
                 ))}
               </div>
-            </Card>
-            <Card>
-              <CardHeader
-                title="Review shopping scenarios"
-                subtitle="Archetype and test mode are independent. Include all three modes and at least one expected decline."
-              />
-              <div className="gateway-panel gateway-stack">
+            </section>
+            <section className={styles.reviewSection} aria-labelledby="scenario-heading">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className={styles.step}>02</span>
+                  <div>
+                    <h2 id="scenario-heading">Review shopping scenarios</h2>
+                    <p>Give each shopper a goal, clear boundaries, and an expected outcome.</p>
+                  </div>
+                </div>
+                <span className={styles.count}>{scenarios.length} scenarios</span>
+              </div>
+              <div className={styles.scenarioCoverage}>
+                {(
+                  [
+                    ['legitimate', 'Everyday shopping'],
+                    ['constraint', 'Constraint checks'],
+                    ['red_team', 'Boundary checks'],
+                  ] as const
+                ).map(([mode, label]) => (
+                  <span key={mode}>
+                    <span className={styles.noteDot} />
+                    {label}
+                    <strong>{scenarios.filter((item) => item.mode === mode).length}</strong>
+                  </span>
+                ))}
+                <span>
+                  Expected declines
+                  <strong>
+                    {scenarios.filter((item) => item.expectedOutcome === 'decline').length}
+                  </strong>
+                </span>
+              </div>
+              <div className={styles.scenarioList}>
                 {scenarios.map((scenario, index) => {
                   const update = (patch: Partial<Scenario>) =>
                     setScenarios((all) =>
                       all.map((item, i) => (i === index ? { ...item, ...patch } : item)),
                     );
                   return (
-                    <section className="gateway-editor" key={scenario.id}>
-                      <label>
-                        Goal {index + 1}
+                    <section className={styles.scenarioCard} key={scenario.id}>
+                      <div className={styles.scenarioHeader}>
+                        <span className={styles.scenarioNumber}>
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <div>
+                          <span className={styles.kicker}>SHOPPING SCENARIO</span>
+                          <h3>
+                            {archetypes.find((item) => item.id === scenario.archetypeId)?.name ||
+                              'Shopper goal'}
+                          </h3>
+                        </div>
+                        <span className={styles.scenarioMode} data-mode={scenario.mode}>
+                          {scenario.mode === 'legitimate'
+                            ? 'Everyday shopping'
+                            : scenario.mode === 'constraint'
+                              ? 'Constraint check'
+                              : 'Boundary check'}
+                        </span>
+                      </div>
+                      <label className={styles.scenarioGoal}>
+                        Shopping goal
                         <textarea
                           aria-label={`Scenario ${index + 1} goal`}
                           value={scenario.goal}
                           onChange={(event) => update({ goal: event.target.value })}
                         />
                       </label>
-                      <div className="gateway-form-grid">
+                      <div className={`gateway-form-grid ${styles.scenarioSettings}`}>
                         <label>
                           Archetype
                           <Select
@@ -387,7 +496,11 @@ export function GatewayWorkflow() {
                           <Select
                             label={`Scenario ${index + 1} mode`}
                             value={scenario.mode}
-                            options={['legitimate', 'constraint', 'red_team']}
+                            options={[
+                              { value: 'legitimate', label: 'Everyday shopping' },
+                              { value: 'constraint', label: 'Constraint check' },
+                              { value: 'red_team', label: 'Boundary check' },
+                            ]}
                             onChange={(mode) => update({ mode: mode as Scenario['mode'] })}
                           />
                         </label>
@@ -396,7 +509,10 @@ export function GatewayWorkflow() {
                           <Select
                             label={`Scenario ${index + 1} expected outcome`}
                             value={scenario.expectedOutcome}
-                            options={['recommend', 'decline']}
+                            options={[
+                              { value: 'recommend', label: 'Recommend a product' },
+                              { value: 'decline', label: 'Decline unsuitable options' },
+                            ]}
                             onChange={(expectedOutcome) =>
                               update({
                                 expectedOutcome: expectedOutcome as Scenario['expectedOutcome'],
@@ -405,120 +521,178 @@ export function GatewayWorkflow() {
                           />
                         </label>
                       </div>
-                      <label>
-                        Soft preferences (one per line)
-                        <textarea
-                          value={scenario.softPreferences.join('\n')}
-                          onChange={(event) =>
-                            update({ softPreferences: event.target.value.split('\n') })
-                          }
-                          onBlur={() =>
-                            update({
-                              softPreferences: scenario.softPreferences
-                                .map((value) => value.trim())
-                                .filter(Boolean),
-                            })
-                          }
-                        />
-                      </label>
-                      <h4>Hard constraints</h4>
-                      {scenario.hardConstraints.map((constraint, ci) => (
-                        <div className="gateway-constraint" key={ci}>
-                          <Select
-                            label={`Scenario ${index + 1} constraint ${ci + 1} type`}
-                            value={constraint.kind}
-                            options={['max_price', 'currency', 'text_contains', 'text_excludes']}
-                            onChange={(kind) =>
-                              update({
-                                hardConstraints: scenario.hardConstraints.map((item, i) =>
-                                  i === ci ? { ...item, kind: kind as typeof item.kind } : item,
-                                ),
-                              })
-                            }
-                          />
-                          <input
-                            aria-label={`Scenario ${index + 1} constraint ${ci + 1} value`}
-                            value={constraint.value}
-                            onChange={(event) =>
-                              update({
-                                hardConstraints: scenario.hardConstraints.map((item, i) =>
-                                  i === ci ? { ...item, value: event.target.value } : item,
-                                ),
-                              })
-                            }
-                          />
-                          <input
-                            aria-label={`Scenario ${index + 1} constraint ${ci + 1} description`}
-                            value={constraint.description}
-                            onChange={(event) =>
-                              update({
-                                hardConstraints: scenario.hardConstraints.map((item, i) =>
-                                  i === ci ? { ...item, description: event.target.value } : item,
-                                ),
-                              })
-                            }
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              update({
-                                hardConstraints: scenario.hardConstraints.filter(
-                                  (_, i) => i !== ci,
-                                ),
-                              })
-                            }
-                          >
-                            Remove constraint
-                          </Button>
+                      <div className={styles.constraintSection}>
+                        <div className={styles.constraintHeading}>
+                          <ShieldCheck size={16} />
+                          <h4>Must meet</h4>
+                          <span>{scenario.hardConstraints.length} hard constraints</span>
                         </div>
-                      ))}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={scenario.hardConstraints.length >= 12}
-                        onClick={() =>
-                          update({
-                            hardConstraints: [
-                              ...scenario.hardConstraints,
-                              {
-                                kind: 'max_price',
-                                value: '100',
-                                description: 'Maximum product price',
-                              },
-                            ],
-                          })
-                        }
-                      >
-                        Add constraint
-                      </Button>
-                      <div className="gateway-toolbar">
-                        {(['navigate', 'search', 'inspect_product', 'stop'] as const).map(
-                          (action) => (
-                            <label className="gateway-checkbox" key={action}>
-                              <input
-                                type="checkbox"
-                                checked={scenario.permittedActions.includes(action)}
-                                onChange={(event) =>
+                        <p className={styles.constraintHint}>
+                          Shoppers must honor every constraint before recommending a product.
+                        </p>
+                        {scenario.hardConstraints.length === 0 && (
+                          <p className={styles.constraintHint}>
+                            No hard constraints added. Add a budget, currency, or product
+                            requirement.
+                          </p>
+                        )}
+                        {scenario.hardConstraints.map((constraint, ci) => (
+                          <div className={styles.constraintRow} key={ci}>
+                            <label>
+                              Requirement
+                              <Select
+                                label={`Scenario ${index + 1} constraint ${ci + 1} type`}
+                                value={constraint.kind}
+                                options={[
+                                  { value: 'max_price', label: 'Maximum price' },
+                                  { value: 'currency', label: 'Currency' },
+                                  { value: 'text_contains', label: 'Must include' },
+                                  { value: 'text_excludes', label: 'Must exclude' },
+                                ]}
+                                onChange={(kind) =>
                                   update({
-                                    permittedActions: event.target.checked
-                                      ? [...scenario.permittedActions, action]
-                                      : scenario.permittedActions.filter((item) => item !== action),
+                                    hardConstraints: scenario.hardConstraints.map((item, i) =>
+                                      i === ci ? { ...item, kind: kind as typeof item.kind } : item,
+                                    ),
                                   })
                                 }
                               />
-                              {action.replaceAll('_', ' ')}
                             </label>
-                          ),
-                        )}
+                            <label>
+                              Value
+                              <input
+                                aria-label={`Scenario ${index + 1} constraint ${ci + 1} value`}
+                                value={constraint.value}
+                                onChange={(event) =>
+                                  update({
+                                    hardConstraints: scenario.hardConstraints.map((item, i) =>
+                                      i === ci ? { ...item, value: event.target.value } : item,
+                                    ),
+                                  })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Description
+                              <input
+                                aria-label={`Scenario ${index + 1} constraint ${ci + 1} description`}
+                                value={constraint.description}
+                                onChange={(event) =>
+                                  update({
+                                    hardConstraints: scenario.hardConstraints.map((item, i) =>
+                                      i === ci
+                                        ? { ...item, description: event.target.value }
+                                        : item,
+                                    ),
+                                  })
+                                }
+                              />
+                            </label>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                update({
+                                  hardConstraints: scenario.hardConstraints.filter(
+                                    (_, i) => i !== ci,
+                                  ),
+                                })
+                              }
+                            >
+                              Remove constraint
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={scenario.hardConstraints.length >= 12}
+                          onClick={() =>
+                            update({
+                              hardConstraints: [
+                                ...scenario.hardConstraints,
+                                {
+                                  kind: 'max_price',
+                                  value: '100',
+                                  description: 'Maximum product price',
+                                },
+                              ],
+                            })
+                          }
+                        >
+                          + Add constraint
+                        </Button>
                       </div>
-                      <p>Stop at: recommend a product or decline.</p>
-                      <small>Evidence: {scenario.provenance.rationale}</small>
+                      <details className={styles.scenarioDetails}>
+                        <summary>
+                          Preferences &amp; allowed actions
+                          <span>
+                            {scenario.softPreferences.length} preferences ·{' '}
+                            {scenario.permittedActions.length} actions
+                            <ChevronDown size={14} />
+                          </span>
+                        </summary>
+                        <div className={styles.scenarioDetailBody}>
+                          <label>
+                            Soft preferences <small>Optional · one per line</small>
+                            <textarea
+                              aria-label={`Scenario ${index + 1} soft preferences`}
+                              value={scenario.softPreferences.join('\n')}
+                              onChange={(event) =>
+                                update({ softPreferences: event.target.value.split('\n') })
+                              }
+                              onBlur={() =>
+                                update({
+                                  softPreferences: scenario.softPreferences
+                                    .map((value) => value.trim())
+                                    .filter(Boolean),
+                                })
+                              }
+                            />
+                          </label>
+                          <h4>Allowed actions</h4>
+                          <div className={styles.scenarioActions}>
+                            {(['navigate', 'search', 'inspect_product', 'stop'] as const).map(
+                              (action) => (
+                                <label className="gateway-checkbox" key={action}>
+                                  <input
+                                    type="checkbox"
+                                    checked={scenario.permittedActions.includes(action)}
+                                    onChange={(event) =>
+                                      update({
+                                        permittedActions: event.target.checked
+                                          ? [...scenario.permittedActions, action]
+                                          : scenario.permittedActions.filter(
+                                              (item) => item !== action,
+                                            ),
+                                      })
+                                    }
+                                  />
+                                  {action.replaceAll('_', ' ')}
+                                </label>
+                              ),
+                            )}
+                          </div>
+                          <p className={styles.constraintHint}>
+                            Each session ends with a recommendation or a decline.
+                          </p>
+                        </div>
+                      </details>
+                      <details className={styles.scenarioDetails}>
+                        <summary>
+                          <span className={styles.evidenceLabel}>
+                            <BookOpen size={14} />
+                            Why this scenario
+                          </span>
+                          <ChevronDown size={14} />
+                        </summary>
+                        <p className={styles.scenarioRationale}>{scenario.provenance.rationale}</p>
+                      </details>
                     </section>
                   );
                 })}
               </div>
-            </Card>
+            </section>
           </fieldset>
           <Card className="gateway-panel">
             <label className="gateway-checkbox">
@@ -564,14 +738,6 @@ export function GatewayWorkflow() {
         </>
       )}
       <ErrorNotice message={runError} />
-      {activeScan && (scanId === activeScan.id || activeScan.draft.id === draft?.id) && (
-        <>
-          <Button asChild variant="outline">
-            <Link href={`/scan?scanId=${activeScan.id}`}>Open saved scan</Link>
-          </Button>
-          <ScanResults scan={activeScan} />
-        </>
-      )}
       <div className="gateway-toolbar">
         <Button asChild variant="outline">
           <Link href="/dashboard">Open dashboard</Link>

@@ -31,6 +31,8 @@ This prototype uses one persistent Node process with owner-scoped files in `.gat
 | `/recommendations` | Evidence-backed findings linking to supporting sessions                                             |
 | `/agent-scan`      | Redirects to the reviewed workflow on Discover                                                      |
 
+The scan page includes a browser preview with selectable shoppers. New runs capture a viewport screenshot after each observed navigation or search; the latest frame arrives through the existing polling loop. This is a sequence of real captured frames, not continuous video. Older scans have no images. Screenshot capture failures do not stop a scan. Images are stored alongside owner-scoped run data, served only after session ownership checks, and are excluded from model prompts. They share the run data's retention lifecycle and should be removed when local run records are purged.
+
 Scan requests remain attached to the root app provider while navigating between pages. Reloading reattaches to persisted running scans; it does not start a duplicate run. Drafts can be reopened by URL or from the saved-plan list. Edits require a fresh approval. Empty data, configuration failures and execution failures are displayed explicitly.
 
 The older `/api/agent-scan` execution endpoint is retired with HTTP 410. Its automatic scripted fallback and shopper self-grading are not part of the connected workflow. The older category-report APIs remain separate legacy demo adapters and do not supply the connected dashboard.

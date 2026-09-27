@@ -110,7 +110,19 @@ export async function handleGateway(
     let data: unknown;
     let status = 200;
     if (segments.length > 3) throw new GatewayError('NOT_FOUND', 'Endpoint not found.', 404);
-    if (resource === 'environments' && !id && request.method === 'GET')
+    if (resource === 'sessions' && id && action === 'screenshot' && request.method === 'GET') {
+      const session = await service.session(ownerId, id);
+      const observationId = url.searchParams.get('observation');
+      const observation = session.trace.find(
+        (event) => event.observation?.id === observationId,
+      )?.observation;
+      if (!observation?.screenshotAvailable)
+        throw new GatewayError('NOT_FOUND', 'Screenshot not available.', 404);
+      const image = await service.store.screenshot(ownerId, observation.id);
+      return new Response(new Uint8Array(image), {
+        headers: { ...headers, 'Content-Type': 'image/jpeg', 'X-Content-Type-Options': 'nosniff' },
+      });
+    } else if (resource === 'environments' && !id && request.method === 'GET')
       data = {
         items: environments().map(({ id, origin, searchPath, entryPath }) => ({
           id,

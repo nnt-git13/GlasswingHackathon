@@ -2,14 +2,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardHeader, EmptyState, StatusBadge } from '@/components/ui/primitives';
-import {
-  gatewayRequest,
-  GatewayApiError,
-  formatTime,
-  type FindingResult,
-} from '@/lib/gateway/client';
+import { gatewayRequest, GatewayApiError, type FindingResult } from '@/lib/gateway/client';
 import type { Scan, Session } from '@/lib/gateway/schemas';
 import { ScanEconomics } from './scan-economics';
+import { ScanExecution } from './scan-execution';
 
 export function useGatewayData<T>(path: string | null, version: unknown = 0) {
   const [data, setData] = useState<T | null>(null);
@@ -116,87 +112,10 @@ export function FindingsList({ findings }: { findings: FindingResult[] }) {
   );
 }
 export function ScanResults({ scan }: { scan: Scan }) {
-  const done = scan.sessions.filter(
-    (session) => !['queued', 'running'].includes(session.status),
-  ).length;
   return (
     <div className="gateway-stack">
-      <Card>
-        <CardHeader
-          title={`Scan ${scan.id.slice(0, 8)}`}
-          subtitle={`${scan.draft.merchantUrl} · ${scan.draft.environmentId}`}
-          action={<FixtureBadge fixture={scan.fixture} />}
-        />
-        <div className="gateway-panel">
-          <div className="gateway-toolbar">
-            <StatusBadge
-              tone={
-                scan.status === 'completed' ? 'green' : scan.status === 'failed' ? 'red' : 'blue'
-              }
-            >
-              {scan.status}
-            </StatusBadge>
-            <span>
-              {done} / {scan.sessions.length} sessions finished
-            </span>
-            <span>{formatTime(scan.createdAt)}</span>
-          </div>
-          <progress
-            aria-label="Shopping session progress"
-            value={done}
-            max={scan.sessions.length}
-          />
-          <p>
-            Authorized stopping point: recommend a product or decline. Sessions are evaluated
-            independently.
-          </p>
-          <div className="gateway-toolbar">
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/sessions?scanId=${scan.id}`}>View sessions</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/discover?draft=${scan.draft.id}`}>Review test plan</Link>
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <ScanExecution scan={scan} />
       <ScanEconomics scan={scan} />
-      <Card>
-        <CardHeader title="Shopper sessions" />
-        <div className="gateway-table-wrap">
-          <table className="gateway-table">
-            <thead>
-              <tr>
-                <th>Shopping goal</th>
-                <th>Archetype / mode</th>
-                <th>Execution</th>
-                <th>Outcome</th>
-                <th>Trace</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scan.sessions.map((session) => (
-                <tr key={session.id}>
-                  <td>{session.scenario.goal}</td>
-                  <td>
-                    {session.archetype.name}
-                    <small>{session.scenario.mode}</small>
-                  </td>
-                  <td>{session.status}</td>
-                  <td>
-                    <OutcomeBadge session={session} />
-                  </td>
-                  <td>
-                    <Link className="text-link" href={`/replays/${session.id}`}>
-                      Replay ({session.trace.length})
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
       <FindingsList
         findings={scan.findings.map((finding) => ({
           ...finding,

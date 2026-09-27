@@ -1,123 +1,106 @@
 'use client';
-import { useApp } from '@/components/layout/app-provider';
-import { integrations } from '@/lib/mock-data/integrations';
-import { Check, Plug, Settings2 } from 'lucide-react';
-import { useState } from 'react';
-import { Button, Card, Dialog, StatusBadge } from './primitives';
+import { ArrowUpRight, BookOpen, Check, Link2, Settings2 } from 'lucide-react';
+import { BrandLogo } from '@/components/integrations/brand-logo';
+import type { Connection, Integration } from '@/lib/integrations/catalog';
+import styles from '@/components/integrations/integrations.module.css';
 export function IntegrationCard({
-  integration: i,
+  integration,
+  connection,
+  onConfigure,
+  disabled,
 }: {
-  integration: (typeof integrations)[number];
+  integration: Integration;
+  connection?: Connection;
+  onConfigure: () => void;
+  disabled: boolean;
 }) {
-  const [status, setStatus] = useState(i.status);
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(i.status === 'Available' ? '' : `Evertrail ${i.name}`);
-  const [endpoint, setEndpoint] = useState(
-    i.name === 'Shopify'
-      ? 'evertrail-outdoors.myshopify.com'
-      : i.name === 'GitHub'
-        ? 'evertrail/storefront'
-        : '',
-  );
-  const { notify } = useApp();
   return (
-    <>
-      <Card className="integration-card">
-        <div className="integration-card-top">
-          <span
-            className={`integration-logo logo-${i.name.toLowerCase().replaceAll(' ', '-')}`}
-            style={{ color: i.color, backgroundColor: `${i.color}0d` }}
-          >
-            {i.mark}
-          </span>
-          <StatusBadge
-            tone={status === 'Available' ? 'neutral' : 'green'}
-            dot={status !== 'Available'}
-          >
-            {status}
-          </StatusBadge>
-        </div>
-        <h3>{i.name}</h3>
-        <p>{i.description}</p>
-        <div className="integration-card-footer">
-          <span>
-            {status === 'Connected' && i.status === 'Available'
-              ? 'Connected just now · demo'
-              : i.detail}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-            {status === 'Available' ? (
-              <>
-                <Plug size={12} />
-                Connect
-              </>
-            ) : (
-              <>
-                <Settings2 size={12} />
-                Configure
-              </>
-            )}
-          </Button>
-        </div>
-      </Card>
-      <Dialog
-        open={open}
-        onOpenChange={setOpen}
-        title={`${status === 'Available' ? 'Connect' : 'Configure'} ${i.name}`}
-        description="Configure this integration in your demo workspace."
-      >
-        <form
-          className="form-stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!name.trim() || !endpoint.trim()) return;
-            setStatus('Connected');
-            setOpen(false);
-            notify(`${i.name} configuration saved locally for this demo.`);
-          }}
+    <article
+      className={`${styles.card} ${connection ? styles.configuredCard : ''}`}
+      aria-label={integration.name}
+    >
+      <div className={styles.cardTop}>
+        <BrandLogo integration={integration} />
+        <span className={connection ? styles.configured : styles.category}>
+          {connection ? (
+            <>
+              <Check size={12} />
+              Configured
+            </>
+          ) : (
+            integration.category
+          )}
+        </span>
+      </div>
+      <h3>{integration.name}</h3>
+      <p className={styles.description}>{integration.description}</p>
+      <div className={styles.capability}>
+        <span />
+        {integration.capability}
+      </div>
+      {connection && (
+        <a
+          className={styles.destination}
+          href={connection.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={connection.url}
         >
-          <label>
-            Connection name
-            <input
-              value={name}
-              required
-              onChange={(e) => setName(e.target.value)}
-              placeholder={`Evertrail ${i.name}`}
-            />
-          </label>
-          <label>
-            {i.name === 'GitHub'
-              ? 'Repository'
-              : i.name === 'Shopify'
-                ? 'Store domain'
-                : 'Account or endpoint'}
-            <input
-              value={endpoint}
-              required
-              onChange={(e) => setEndpoint(e.target.value)}
-              placeholder={
-                i.name === 'GitHub' ? 'organization/repository' : 'Your account identifier'
-              }
-            />
-          </label>
-          <div className="info-panel">
-            <Plug size={16} />
-            <span>
-              Configuration is simulated in this frontend demo. No credentials are collected or
-              external services contacted.
-            </span>
-          </div>
-          <div className="dialog-actions">
-            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              <Check size={14} />
-              Save connection
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-    </>
+          <Link2 size={14} />
+          <span>
+            <strong>{connection.name}</strong>
+            <small>{new URL(connection.url).hostname}</small>
+          </span>
+          <ArrowUpRight size={15} />
+        </a>
+      )}
+      <div className={styles.cardFooter}>
+        <a
+          href={integration.docsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.docs}
+          aria-label={`${integration.name} documentation`}
+        >
+          <BookOpen size={14} />
+          Docs
+          <ArrowUpRight size={12} />
+        </a>
+        <div className={styles.cardActions}>
+          {connection ? (
+            <>
+              <button
+                className={styles.iconButton}
+                onClick={onConfigure}
+                disabled={disabled}
+                aria-label={`Configure ${integration.name}`}
+              >
+                <Settings2 size={15} />
+              </button>
+              <a
+                className={styles.openButton}
+                href={connection.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${integration.name}`}
+              >
+                Open {integration.name === 'CI/CD Webhook' ? 'pipeline' : integration.name}
+                <ArrowUpRight size={14} />
+              </a>
+            </>
+          ) : (
+            <button
+              className={styles.configureButton}
+              onClick={onConfigure}
+              disabled={disabled}
+              aria-label={`Configure ${integration.name}`}
+            >
+              Configure
+              <Link2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }

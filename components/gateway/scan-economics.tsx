@@ -17,9 +17,10 @@ function tokenTotals(calls: ModelCall[]) {
   return {
     inputTokens: calls.reduce((sum, call) => sum + call.inputTokens, 0),
     outputTokens: calls.reduce((sum, call) => sum + call.outputTokens, 0),
-    estimatedCostUsd: calls.length && calls.every((call) => call.estimatedCostUsd !== null)
-      ? calls.reduce((sum, call) => sum + call.estimatedCostUsd!, 0)
-      : null,
+    estimatedCostUsd:
+      calls.length && calls.every((call) => call.estimatedCostUsd !== null)
+        ? calls.reduce((sum, call) => sum + call.estimatedCostUsd!, 0)
+        : null,
   };
 }
 
@@ -67,10 +68,12 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
     <Card>
       <CardHeader
         title="Scan economics"
-        subtitle="Measured cost and wall clock for this run, denominated per session."
+        subtitle="Session progress, elapsed time, and model usage for this run."
         action={
           <StatusBadge
-            tone={basis === 'configured_rates' ? 'green' : basis === 'fixture' ? 'amber' : 'neutral'}
+            tone={
+              basis === 'configured_rates' ? 'green' : basis === 'fixture' ? 'amber' : 'neutral'
+            }
           >
             {basisLabel[basis]}
           </StatusBadge>
@@ -100,14 +103,18 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
             <span>Model calls</span>
             <strong>{scan.modelCalls.length}</strong>
           </div>
-          <div className="economics-stat highlight">
-            <span>Total cost</span>
-            <strong>{formatCost(totals.estimatedCostUsd)}</strong>
-          </div>
-          <div className="economics-stat highlight">
-            <span>Cost per session</span>
-            <strong>{formatCost(costPerSession)}</strong>
-          </div>
+          {totals.estimatedCostUsd !== null && (
+            <div className="economics-stat highlight">
+              <span>Total cost</span>
+              <strong>{formatCost(totals.estimatedCostUsd)}</strong>
+            </div>
+          )}
+          {costPerSession !== null && (
+            <div className="economics-stat highlight">
+              <span>Cost per session</span>
+              <strong>{formatCost(costPerSession)}</strong>
+            </div>
+          )}
         </div>
         {baselineSet && (
           <div className="economics-baseline">
@@ -119,8 +126,8 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
                   {formatDuration(baselineMinutes * 60_000)} · ${baselineCost.toFixed(2)}
                 </strong>
                 <small>
-                  {scan.sessions.length} scenarios × {MANUAL_QA_BASELINE.minutesPerScenario} min at $
-                  {MANUAL_QA_BASELINE.loadedHourlyRateUsd}/hr loaded
+                  {scan.sessions.length} scenarios × {MANUAL_QA_BASELINE.minutesPerScenario} min at
+                  ${MANUAL_QA_BASELINE.loadedHourlyRateUsd}/hr loaded
                 </small>
               </div>
               <div>
@@ -134,8 +141,9 @@ export function ScanEconomics({ scan }: { scan: Scan }) {
           </div>
         )}
         <p className="economics-note">
-          Cost is recorded per model call and aggregated per scan, never estimated when the provider
-          does not report usage.
+          {totals.estimatedCostUsd === null
+            ? 'Cost metrics appear when model pricing and token usage are available.'
+            : 'Cost is calculated from recorded token usage and configured model rates.'}
         </p>
       </div>
     </Card>
