@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Menu,
   Mountain,
+  PiggyBank,
   Plug,
   ScanLine,
   Search,
@@ -45,6 +46,7 @@ const navigation = [
   { href: '/recommendations', label: 'Findings', icon: Wand2 },
   { href: '/analytics', label: 'Analytics', icon: ChartNoAxesCombined },
   { href: '/pitch', label: 'Why This Matters', icon: Target },
+  { href: '/roi', label: 'ROI', icon: PiggyBank },
 ];
 export function GatewayLogo({ small = false }: { small?: boolean }) {
   return (

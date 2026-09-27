@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardHeader, EmptyState, StatusBadge } from '@/components/ui/primitives';
 import { gatewayRequest, GatewayApiError, type FindingResult } from '@/lib/gateway/client';
+import { groupFindings, urgencyLabel } from '@/lib/gateway/finding-guidance';
 import type { Scan, Session } from '@/lib/gateway/schemas';
+import { Wrench } from 'lucide-react';
 import { ScanEconomics } from './scan-economics';
 import { ScanExecution } from './scan-execution';
 
@@ -79,33 +81,70 @@ export function FindingsList({ findings }: { findings: FindingResult[] }) {
   return (
     <Card>
       <CardHeader
-        title="Findings"
-        subtitle="Each finding links to the recorded session and supporting observations."
+        title="What to fix"
+        subtitle="What a shopper ran into, and what to change on your store. Each one links to the recorded session."
       />
       {findings.length ? (
-        findings.map((finding) => (
-          <article className="gateway-finding" data-severity={finding.severity} key={finding.id}>
-            <div className="gateway-toolbar">
-              <StatusBadge tone={finding.severity === 'high' ? 'red' : 'amber'}>
-                {finding.severity}
-              </StatusBadge>
-              <FixtureBadge fixture={finding.fixture} />
-              <span>{finding.category}</span>
-            </div>
-            <h3>{finding.title}</h3>
-            <p>{finding.summary}</p>
-            <Link
-              className="text-link"
-              href={`/replays/${finding.sessionId}?evidence=${encodeURIComponent(finding.evidenceIds[0] || '')}`}
-            >
-              Inspect supporting session →
-            </Link>
-          </article>
-        ))
+        groupFindings(findings).map((group) => {
+          const help = group.guidance;
+          const count = group.occurrences.length;
+          const first = group.occurrences[0];
+          return (
+            <article className="gateway-finding" data-severity={group.severity} key={group.category}>
+              <div className="gateway-toolbar">
+                <StatusBadge tone={group.severity === 'high' ? 'red' : 'amber'}>
+                  {urgencyLabel(group.severity)}
+                </StatusBadge>
+                <span className="finding-label">{help.label}</span>
+                <span className="finding-count">
+                  {count === 1 ? '1 shopper affected' : `${count} shoppers affected`}
+                </span>
+                <FixtureBadge fixture={first.fixture} />
+              </div>
+              <h3>{help.headline}</h3>
+              <p>{help.whatHappened}</p>
+              <div className="finding-fix">
+                <span className="finding-fix-heading">
+                  <Wrench size={13} />
+                  Recommended fix
+                </span>
+                <p>{help.fix}</p>
+                <span className="finding-fix-subheading">Common causes to check</span>
+                <ul>
+                  {help.commonCauses.map((cause) => (
+                    <li key={cause}>{cause}</li>
+                  ))}
+                </ul>
+              </div>
+              <details className="finding-detail">
+                <summary>
+                  Technical detail{count > 1 ? ` · ${count} sessions` : ''}
+                </summary>
+                {group.occurrences.map((finding) => (
+                  <div className="finding-detail-item" key={finding.id}>
+                    <strong>{finding.title}</strong>
+                    <p>{finding.summary}</p>
+                  </div>
+                ))}
+              </details>
+              <div className="finding-sessions">
+                {group.occurrences.map((finding, index) => (
+                  <Link
+                    key={finding.id}
+                    className="text-link"
+                    href={`/replays/${finding.sessionId}?evidence=${encodeURIComponent(finding.evidenceIds[0] || '')}`}
+                  >
+                    {count === 1 ? 'Watch what the shopper did' : `Watch shopper ${index + 1}`} →
+                  </Link>
+                ))}
+              </div>
+            </article>
+          );
+        })
       ) : (
         <EmptyState
-          title="No findings recorded"
-          description="Completed evaluations will appear here when a goal fails or cannot be verified."
+          title="Nothing to fix yet"
+          description="If a shopper gets stuck or ends up with the wrong product, it will show up here with a suggested fix."
         />
       )}
     </Card>
