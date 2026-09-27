@@ -560,30 +560,6 @@ export class StorefrontBrowser implements ShopperBrowser {
         422,
       );
   }
-  /** Refuses to continue once the page is asking for payment details. */
-  private async assertNotPaymentStep() {
-    const names = await this.page
-      .locator('input, select')
-      .evaluateAll((nodes) =>
-        nodes.map((node) =>
-          [
-            node.getAttribute('name'),
-            node.getAttribute('id'),
-            node.getAttribute('autocomplete'),
-            node.getAttribute('placeholder'),
-          ]
-            .filter(Boolean)
-            .join(' '),
-        ),
-      )
-      .catch(() => [] as string[]);
-    if (names.some((descriptor) => paymentFieldPattern.test(descriptor)))
-      throw new GatewayError(
-        'PAYMENT_STEP_REACHED',
-        'Reached the payment step. The agent stops here and never enters payment details.',
-        422,
-      );
-  }
   private async clickFirst(selectors: string[]) {
     for (const selector of selectors) {
       const target = this.page.locator(selector).first();
@@ -632,35 +608,55 @@ export class StorefrontBrowser implements ShopperBrowser {
         'a[href*="/checkout"]',
         'button:has-text("Check out")',
       ]);
-      await this.assertNotPaymentStep();
       return this.snapshot('page');
     }
     if (action.type === 'fill_checkout') {
       this.requireCheckoutEnabled();
-      await this.assertNotPaymentStep();
-      await this.page
+      // Shopify's one-page checkout puts contact, delivery and payment on a
+      // single page, so refusing the whole page when a card field exists would
+      // make checkout untestable. The guard is therefore per field, not per
+      // page: fill contact and delivery, skip anything payment or billing, and
+      // click nothing. There is no submit anywhere in this action, so no order
+      // can be placed however the page is laid out.
+      const filled = await this.page
         .locator('input:visible, select:visible')
-        .evaluateAll((nodes, identity) => {
-          for (const node of nodes) {
-            const element = node as HTMLInputElement | HTMLSelectElement;
-            const descriptor = [
-              element.getAttribute('name'),
-              element.getAttribute('id'),
-              element.getAttribute('autocomplete'),
-              element.getAttribute('placeholder'),
-            ]
-              .filter(Boolean)
-              .join(' ')
-              .toLowerCase();
-            const match = identity.find(([pattern]) => new RegExp(pattern, 'i').test(descriptor));
-            if (!match || !match[1]) continue;
-            element.value = match[1];
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, checkoutFieldMap())
-        .catch(() => {});
-      await this.assertNotPaymentStep();
+        .evaluateAll(
+          (nodes, { identity, skip }) => {
+            const blocked = new RegExp(skip, 'i');
+            const entered: string[] = [];
+            for (const node of nodes) {
+              const element = node as HTMLInputElement | HTMLSelectElement;
+              const descriptor = [
+                element.getAttribute('name'),
+                element.getAttribute('id'),
+                element.getAttribute('autocomplete'),
+                element.getAttribute('placeholder'),
+                element.getAttribute('aria-label'),
+              ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+              // Never a card field, and never a billing field either: the
+              // shopper stops at billing by design.
+              if (blocked.test(descriptor)) continue;
+              const match = identity.find(([pattern]) => new RegExp(pattern, 'i').test(descriptor));
+              if (!match || !match[1]) continue;
+              element.value = match[1];
+              element.dispatchEvent(new Event('input', { bubbles: true }));
+              element.dispatchEvent(new Event('change', { bubbles: true }));
+              entered.push(descriptor.slice(0, 40));
+            }
+            return entered;
+          },
+          { identity: checkoutFieldMap(), skip: `${paymentFieldPattern.source}|billing` },
+        )
+        .catch(() => [] as string[]);
+      if (!filled.length)
+        throw new GatewayError(
+          'ACTION_BLOCKED',
+          'No contact or delivery fields could be filled on this page.',
+          422,
+        );
       return this.snapshot('page');
     }
     return this.observe(action.url!, action.type === 'inspect_product' ? 'product' : 'page');

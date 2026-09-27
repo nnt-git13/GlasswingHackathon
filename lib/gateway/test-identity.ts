@@ -31,10 +31,16 @@ export const testIdentity = {
 export const paymentFieldPattern =
   /(card|cardnumber|credit|cvc|cvv|security[_-]?code|expiry|exp[_-]?(month|year)|payment|billing[_-]?(number|card))/i;
 
+/**
+ * Fields the shopper stops short of. Payment is obvious; billing is excluded
+ * too because a checkout test ends at billing by design.
+ */
+export const excludedFieldPattern = new RegExp(`${paymentFieldPattern.source}|billing`, 'i');
+
 /** Maps a checkout field's name/id/label to the value the fake shopper would enter. */
 export function valueForField(descriptor: string): string | null {
   const key = descriptor.toLowerCase();
-  if (paymentFieldPattern.test(key)) return null;
+  if (excludedFieldPattern.test(key)) return null;
   if (/first[_-]?name|given[_-]?name/.test(key)) return testIdentity.firstName;
   if (/last[_-]?name|family[_-]?name|surname/.test(key)) return testIdentity.lastName;
   if (/(^|[^a-z])name([^a-z]|$)|full[_-]?name/.test(key)) return testIdentity.fullName;

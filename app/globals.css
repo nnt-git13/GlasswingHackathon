@@ -7341,6 +7341,49 @@ svg {
   gap: 16px;
   margin-top: 4px;
 }
+.finding-ai-prompt {
+  margin-top: 14px;
+  border: 1px solid #dde5f5;
+  border-radius: 7px;
+  background: #f5f8fd;
+  padding: 3px 15px;
+}
+.finding-ai-prompt > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #3a5aa8;
+}
+.finding-ai-prompt > summary > svg {
+  color: #4e7bc9;
+}
+.finding-ai-prompt-note {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #5b6a8c;
+  margin: 0 0 8px;
+}
+.finding-ai-prompt-text {
+  white-space: pre-wrap;
+  font:
+    11.5px/1.65 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: #2a3550;
+  background: #fff;
+  border: 1px solid #e3e9f7;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+}
+.finding-ai-prompt > .btn {
+  margin-bottom: 12px;
+}
 .gateway-finding .finding-detail p {
   margin: 4px 0 0;
   font-size: 12px;

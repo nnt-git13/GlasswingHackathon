@@ -34,6 +34,7 @@ import {
 } from '../../lib/gateway/browser';
 import { environment } from '../../lib/gateway/config';
 import { OpenAIProvider } from '../../lib/gateway/provider';
+import { testIdentity, valueForField } from '../../lib/gateway/test-identity';
 import {
   actionSchema,
   summarySchema,
@@ -204,6 +205,41 @@ test('repeated navigation links do not hide product links from shopper observati
   } finally {
     await browser.close();
   }
+});
+
+test('the checkout shopper can never supply a payment or billing value', () => {
+  // J Skis, like most Shopify stores, uses a one-page checkout: contact,
+  // delivery and card fields all live on the same page. Safety therefore
+  // cannot come from refusing the page — it has to come from the field map
+  // being incapable of producing a value for a field we must not touch.
+  const forbidden = [
+    'cardNumber',
+    'number',
+    'credit-card',
+    'cc-number',
+    'cvv',
+    'cvc',
+    'security_code',
+    'expiry',
+    'exp-month',
+    'exp_year',
+    'billing_address1',
+    'billingAddress',
+    'billing-zip',
+    'payment_method',
+  ];
+  for (const descriptor of forbidden) expect(valueForField(descriptor)).toBeNull();
+
+  // The delivery fields it is allowed to fill still work.
+  expect(valueForField('firstName')).toBe('John');
+  expect(valueForField('lastName')).toBe('Doe');
+  expect(valueForField('address1')).toBe('123 Appleseed Lane');
+  expect(valueForField('city')).toBe('Los Gatos');
+  expect(valueForField('zip')).toBe('95030');
+
+  // Nothing in the identity is card-shaped, so a missed field cannot leak one.
+  for (const value of Object.values(testIdentity))
+    if (typeof value === 'string') expect(/^\d{12,19}$/.test(value.replace(/\s/g, ''))).toBe(false);
 });
 
 test('read-only query rules are scoped and attribution is removed before navigation', () => {
