@@ -1,7 +1,7 @@
 'use client';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Card, CardHeader, Tabs } from '@/components/ui/primitives';
-import { Check, ShoppingBag, X } from 'lucide-react';
+import { Check, ShoppingBag, Store, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface Point {
@@ -115,6 +115,27 @@ const sections: Section[] = [
 
 const checklist = ['Product schema', 'Meta description', 'robots.txt', 'Returns policy'];
 
+const audiences = [
+  {
+    tier: 'Start here',
+    who: 'Mid-market and enterprise merchants running headless or custom storefronts',
+    detail:
+      'Shopify Plus with a custom frontend, commercetools, Salesforce Commerce Cloud, bespoke React stacks. They ship weekly, they fall outside what platform-native agent tooling covers, and they already fund QA and bot-security budgets.',
+  },
+  {
+    tier: 'Expand',
+    who: 'The broader mid-market on standard platform storefronts',
+    detail:
+      'The same failure modes with less urgency today. This tier buys once agent-referred traffic is large enough to show up in their own funnel reporting.',
+  },
+  {
+    tier: 'Channel',
+    who: 'Commerce platforms — Shopify, Wix, Squarespace, BigCommerce, commercetools',
+    detail:
+      'Embedded rather than sold direct. One integration reaches thousands of merchants, and a checkout an agent cannot complete is a platform problem as much as a merchant one.',
+  },
+];
+
 function PointList({ points }: { points: Point[] }) {
   return (
     <ul className="pitch-points">
@@ -176,7 +197,7 @@ export default function PitchPage() {
     <>
       <PageHeading
         title="Why This Matters"
-        subtitle="How Gateway answers the four judging criteria, with the evidence behind each one."
+        subtitle="Who has this problem, what it costs them, how this deploys, and why it takes an agent."
       />
       <div className="pitch-banner pitch-enter">
         <p>Checklists grade your data. We test whether agents can buy.</p>
@@ -227,6 +248,37 @@ export default function PitchPage() {
           </div>
         </Card>
       ))}
+      <Card
+        className="pitch-section pitch-enter"
+        style={{ animationDelay: `${(sections.length + 1) * 120}ms` }}
+      >
+        <CardHeader
+          title="We start with the merchants platform-native tooling leaves uncovered, then widen."
+          icon={
+            <span className="pitch-number">
+              <Store size={13} />
+            </span>
+          }
+          action={<span className="subtle-badge">Who we sell to</span>}
+        />
+        <div className="pitch-body">
+          <div className="pitch-audiences">
+            {audiences.map((audience) => (
+              <div className="pitch-audience" key={audience.tier}>
+                <span className="pitch-audience-tier">{audience.tier}</span>
+                <div>
+                  <strong>{audience.who}</strong>
+                  <p>{audience.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <small className="pitch-demo-note">
+            Not the SMB long tail — platform-native tooling reaches it first, and those storefronts
+            break in far more predictable ways.
+          </small>
+        </div>
+      </Card>
     </>
   );
 }
