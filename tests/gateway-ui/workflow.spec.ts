@@ -252,6 +252,32 @@ test('dashboard, sessions, replay and findings load persisted results across pag
     'Not yet measured',
   );
   await expect(page.getByRole('heading', { name: 'Agent readiness trend' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Shopper outcomes', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Inspect shopper', exact: true })).toHaveCount(3);
+  await expect(page.getByText('Conclusive evaluation coverage', { exact: true })).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Filter shopper outcomes' })
+    .getByRole('button', { name: 'Failed', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'No shoppers match this filter', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Filter shopper outcomes' })
+    .getByRole('button', { name: 'All', exact: true })
+    .click();
+  await expect(page.locator('.workspace-switch strong')).toHaveText(
+    new URL(savedScan.draft.merchantUrl).hostname,
+  );
+  await expect(page.getByText('Median time to decision', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Products shoppers selected' })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Goal readiness/ })).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: '/tmp/gateway-overview-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '/tmp/gateway-overview-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: 'test-results/quantitative-overview.png', fullPage: true });
   await expect(page.getByRole('link', { name: 'View scan', exact: true })).toBeVisible();
   await page.reload();
@@ -274,7 +300,7 @@ test('dashboard, sessions, replay and findings load persisted results across pag
   await page.getByRole('button', { name: 'Export session JSON' }).click();
   expect((await downloadPromise).suggestedFilename()).toContain('gateway-session-');
   await page.goto(`${appOrigin}/recommendations`);
-  await expect(page.getByRole('heading', { name: 'No findings recorded' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nothing to fix yet' })).toBeVisible();
   await page.goto(`${appOrigin}/replays/00000000-0000-4000-8000-000000000099`);
   await expect(page.locator('.gateway-error')).toContainText('Session not found');
 });
@@ -349,16 +375,116 @@ test('API authorization remains enforced independently of the public discovery p
   }
 });
 
-test('merged main retains demand simulation, visual demo replay and reporting pages', async ({
+test('storefront demand evidence, visual demo replay and reporting pages remain consistent', async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(`${appOrigin}/demand-signal`);
-  await expect(page.getByRole('heading', { name: 'Demand Signal', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Demand Signal', exact: true })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByRole('heading', { name: 'What shoppers selected' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Decision distribution' })).toBeVisible();
+  await expect(page.locator('.workspace-switch strong')).toHaveText(
+    new URL(savedScan.draft.merchantUrl).hostname,
+  );
+  await page.getByRole('button', { name: 'Add new product', exact: true }).click();
+  await page.getByLabel('Product name', { exact: true }).fill('New Trail Pack');
+  await page
+    .getByLabel('Product description', { exact: true })
+    .fill('A lightweight weekend backpack with recycled materials and a published weight.');
+  await page.getByLabel('Price', { exact: true }).fill('129');
+  await page.getByText('Add traffic context', { exact: true }).click();
+  await page
+    .getByLabel('Existing traffic context (optional)', { exact: true })
+    .fill('User-reported: visitors arrive from weekend hiking reviews.');
+  await page.screenshot({
+    path: '/tmp/gateway-demand-entry.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+  let releaseAssessment!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseAssessment = resolve;
+  });
+  await page.route(`**/api/gateway/scans/${savedScan.id}/demand`, async (route) => {
+    await responseGate;
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Assess product & price', exact: true }).click();
+  try {
+    await expect(
+      page.getByRole('region', { name: 'Product assessment in progress' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Evaluating product appeal and price' }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Product name', { exact: true })).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const panel = document.querySelector('[aria-label="Product assessment in progress"]');
+          const header = document.querySelector('.top-navigation');
+          return (
+            !!panel &&
+            !!header &&
+            panel.getBoundingClientRect().top >= header.getBoundingClientRect().bottom
+          );
+        }),
+      )
+      .toBe(true);
+    await page.screenshot({
+      path: '/tmp/gateway-demand-loading.png',
+      fullPage: true,
+      animations: 'disabled',
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: '/tmp/gateway-demand-loading-mobile.png',
+      fullPage: true,
+      animations: 'disabled',
+    });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+  } finally {
+    releaseAssessment();
+  }
+  await expect(page.getByRole('heading', { name: 'New Trail Pack', exact: true })).toBeVisible({
+    timeout: 30000,
+  });
   await expect(
-    page.getByText('Demo simulation using fixture persona reactions and scores.'),
+    page.getByText('Includes user-reported traffic context.', { exact: true }),
   ).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'New Trail Pack', exact: true })).toBeVisible({
+    timeout: 30000,
+  });
+  const profileDetails = page
+    .locator('details')
+    .filter({ has: page.getByText('Reasoning & sources', { exact: false }) })
+    .first();
+  await expect(profileDetails).not.toHaveAttribute('open');
+  await profileDetails.locator('summary').click();
+  await expect(
+    profileDetails.getByRole('heading', { name: 'Supporting pages', exact: true }),
+  ).toBeVisible();
+  await expect(profileDetails.getByRole('link')).toHaveCount(1);
+  await profileDetails.locator('summary').click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: '/tmp/gateway-demand-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page
+    .getByRole('group', { name: 'Filter demand decisions' })
+    .getByRole('button', { name: 'Declined', exact: true })
+    .click();
+  await expect(page.getByRole('link', { name: 'Inspect evidence', exact: true })).toHaveCount(1);
+  await expect(page.getByText('Sample product research')).toHaveCount(0);
+  await page.screenshot({ path: '/tmp/gateway-demand-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${appOrigin}/replays/SES-10482`);
   await expect(
     page.getByText('Demo replay — illustrative storefront actions, not a recorded Gateway scan.'),
@@ -425,8 +551,10 @@ test('evaluator reports feed quantitative blocks and inconclusive scores remain 
   }));
   await page.route('**/api/gateway/dashboard', (route) => route.fulfill({ json: payload }));
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'More evidence needed' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Goal readiness: not yet measured' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'More evidence needed' })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByRole('img', { name: /Goal readiness/ })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('.sidebar')).not.toBeInViewport();

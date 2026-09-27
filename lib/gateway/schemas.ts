@@ -200,6 +200,7 @@ export interface Finding {
   summarySource: 'deterministic' | 'model';
 }
 export interface Scan {
+  demandReports?: import('./demand').DemandReport[];
   categoryReports?: import('./readiness').CategoryReport[];
   id: string;
   ownerId: string;

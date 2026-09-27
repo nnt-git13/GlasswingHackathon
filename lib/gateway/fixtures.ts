@@ -2,6 +2,25 @@ import type { Action, Observation, Scenario } from './schemas';
 
 // Explicit development fixtures only. The browser still visits the configured storefront.
 export function fixtureOutput(purpose: string, input: Record<string, unknown>): unknown {
+  if (purpose === 'demand') {
+    const archetypes = input.archetypes as { id: string }[];
+    const evidence = input.evidence as { id: string }[];
+    return {
+      summary: 'Development fixture assessment of the proposed product; not a live model judgment.',
+      positioning: 'Fixture positioning based on the supplied storefront context.',
+      trafficLimitations:
+        'Actual traffic is unavailable. These are reviewed profile hypotheses, not measured audience shares.',
+      profiles: archetypes.map((profile) => ({
+        archetypeId: profile.id,
+        verdict: 'insufficient_evidence',
+        priceFit: 'unknown',
+        reasoning: 'Fixture mode does not assess real product or price attractiveness.',
+        objections: ['Validate this product with a live provider and real shoppers.'],
+        evidenceIds: evidence.length ? [evidence[0].id] : [],
+      })),
+      nextSteps: ['Run a live assessment using the configured model provider.'],
+    };
+  }
   if (purpose === 'context') {
     const evidence = input.evidence as Observation[];
     return {

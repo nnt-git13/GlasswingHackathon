@@ -30,6 +30,9 @@ export default function AnalyticsPage() {
         subtitle="Measure how reliably and safely agents shop your storefront."
         action={
           <div className="analytics-range">
+            <a href="/roi" className="gateway-link">
+              Cost &amp; ROI →
+            </a>
             <CalendarDays size={14} />
             <span>Last</span>
             <div className="segmented-control">
@@ -93,7 +96,13 @@ export default function AnalyticsPage() {
             {data.reduce((sum, d) => sum + d.blocked, 0)}
             <small>blocked actions · 100% enforced</small>
           </div>
-          <OperationalChart data={chartData} dataKey="blocked" color="#d8a055" bar percent={false} />
+          <OperationalChart
+            data={chartData}
+            dataKey="blocked"
+            color="#d8a055"
+            bar
+            percent={false}
+          />
         </ChartCard>
         <ChartCard
           title="Readiness score over time"

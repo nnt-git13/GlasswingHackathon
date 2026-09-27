@@ -2,13 +2,15 @@
 import { useApp } from '@/components/layout/app-provider';
 import { PageHeading } from '@/components/ui/page-heading';
 import { Button, Card, Select, Tabs } from '@/components/ui/primitives';
-import { merchant, productConfig } from '@/lib/mock-data/merchant';
+import { useStorefrontContext } from '@/components/gateway/provider';
 import { Check, Mountain, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 export default function SettingsPage() {
   const [tab, setTab] = useState('General');
-  const [org, setOrg] = useState(productConfig.organization);
-  const [domain, setDomain] = useState(merchant.domain);
+  const { hostname } = useStorefrontContext();
+  const [org, setOrg] = useState<string | null>(null);
+  const [domain, setDomain] = useState<string | null>(null);
   const [timezone, setTimezone] = useState('America/New_York');
   const [scanFrequency, setScanFrequency] = useState('Daily');
   const [email, setEmail] = useState(true);
@@ -19,6 +21,23 @@ export default function SettingsPage() {
         title="Settings"
         subtitle="Manage your workspace and readiness monitoring preferences."
       />
+      <Card className="gateway-panel">
+        <h2>Workspace tools</h2>
+        <p className="muted">
+          Manage connected services and the policies applied to shopper sessions.
+        </p>
+        <div className="gateway-toolbar">
+          <Button asChild variant="outline">
+            <Link href="/integrations">Manage integrations</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/security">
+              <ShieldCheck size={14} />
+              Security policies
+            </Link>
+          </Button>
+        </div>
+      </Card>
       <Card className="settings-card">
         <Tabs
           tabs={['General', 'Scan preferences', 'Notifications']}
@@ -45,11 +64,19 @@ export default function SettingsPage() {
               </div>
               <label>
                 Organization name
-                <input required value={org} onChange={(e) => setOrg(e.target.value)} />
+                <input
+                  required
+                  value={org ?? hostname ?? 'Your workspace'}
+                  onChange={(e) => setOrg(e.target.value)}
+                />
               </label>
               <label>
                 Storefront domain
-                <input required value={domain} onChange={(e) => setDomain(e.target.value)} />
+                <input
+                  required
+                  value={domain ?? hostname ?? ''}
+                  onChange={(e) => setDomain(e.target.value)}
+                />
               </label>
               <label>
                 Timezone
@@ -76,7 +103,8 @@ export default function SettingsPage() {
               <div className="info-panel">
                 <ShieldCheck size={17} />
                 <span>
-                  All scans run in simulation mode. Live orders and payment capture are disabled.
+                  Storefront tests use recorded browser observations. Optional checkout tests stop
+                  before payment.
                 </span>
               </div>
             </>

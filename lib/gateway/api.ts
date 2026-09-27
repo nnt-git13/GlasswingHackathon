@@ -1,3 +1,4 @@
+import { demandRequestSchema } from './demand';
 import { z } from 'zod';
 import { categoryReportSchema, readinessForScan, readinessOverview } from './readiness';
 import { environments } from './config';
@@ -139,7 +140,10 @@ export async function handleGateway(
         ),
         url,
       );
-    else if (resource === 'drafts' && !id && request.method === 'GET')
+    else if (resource === 'scans' && id && action === 'demand' && request.method === 'POST') {
+      data = await service.assessDemand(ownerId, id, await body(request, demandRequestSchema));
+      status = 201;
+    } else if (resource === 'drafts' && !id && request.method === 'GET')
       data = paginate(
         (await service.store.listDrafts(ownerId)).map(
           ({ id, merchantUrl, createdAt, revision, approvedAt, fixture }) => ({

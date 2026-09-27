@@ -202,3 +202,28 @@ test('interest picker feeds the storefront review workflow without redirecting t
   await expect(page).toHaveURL(/\/discover/);
   expect(page.url()).not.toContain('/scanning');
 });
+
+test('consolidated navigation keeps sessions under Overview and workspace tools under Settings', async ({
+  page,
+}) => {
+  await page.goto(`${appOrigin}/dashboard`);
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(nav.getByRole('link')).toHaveCount(6);
+  await expect(nav.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await page.getByRole('link', { name: 'Browse sessions →', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Shopping sessions', exact: true })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await nav.getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByRole('link', { name: 'Manage integrations', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Integrations', exact: true })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Settings', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+});

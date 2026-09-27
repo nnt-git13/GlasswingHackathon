@@ -3,7 +3,6 @@ import { Button, Dialog, Dropdown, DropdownItem, LoadingLabel } from '@/componen
 import { productConfig } from '@/lib/mock-data/merchant';
 import { cn } from '@/lib/utils';
 import {
-  Activity,
   ArrowUpRight,
   Bell,
   BookOpen,
@@ -12,18 +11,14 @@ import {
   Check,
   ChevronDown,
   ChevronsUpDown,
-  CirclePlay,
   ExternalLink,
   Globe2,
   LayoutDashboard,
   Menu,
   Mountain,
-  PiggyBank,
   Plug,
   ScanLine,
-  Search,
   Settings2,
-  ShieldCheck,
   Target,
   Terminal,
   Users,
@@ -34,20 +29,35 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { signOut } from '@/app/auth/actions';
 import { useApp } from './app-provider';
-import { useGateway } from '@/components/gateway/provider';
+import { useGateway, useStorefrontContext } from '@/components/gateway/provider';
 const navigation = [
-  { href: '/discover', label: 'Discover', icon: Search },
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/scan', label: 'Readiness Scan', icon: ScanLine },
+  {
+    href: '/dashboard',
+    label: 'Overview',
+    icon: LayoutDashboard,
+    routes: ['/dashboard', '/scan', '/sessions', '/replays'],
+  },
   { href: '/demand-signal', label: 'Demand Signal', icon: Users },
-  { href: '/sessions', label: 'Sessions', icon: Activity },
-  { href: '/security', label: 'Security', icon: ShieldCheck },
-  { href: '/replays', label: 'Replays', icon: CirclePlay },
   { href: '/recommendations', label: 'Findings', icon: Wand2 },
-  { href: '/analytics', label: 'Analytics', icon: ChartNoAxesCombined },
+  {
+    href: '/analytics',
+    label: 'Analytics',
+    icon: ChartNoAxesCombined,
+    routes: ['/analytics', '/roi'],
+  },
   { href: '/pitch', label: 'Why This Matters', icon: Target },
-  { href: '/roi', label: 'ROI', icon: PiggyBank },
 ];
+const settingsNavigation = {
+  href: '/settings',
+  label: 'Settings',
+  icon: Settings2,
+  routes: ['/settings', '/integrations', '/security'],
+};
+function navigationActive(item: { href: string; routes?: string[] }, path: string) {
+  return (item.routes || [item.href]).some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
 export function GatewayLogo({ small = false }: { small?: boolean }) {
   return (
     <span className={cn('gateway-logo', small && 'small')} aria-hidden="true">
@@ -67,6 +77,7 @@ export function AppSidebar({
   onHelp: () => void;
 }) {
   const path = usePathname();
+  const { hostname } = useStorefrontContext();
   return (
     <>
       <button
@@ -87,8 +98,8 @@ export function AppSidebar({
             <Mountain size={17} />
           </span>
           <div>
-            <strong>{productConfig.organization}</strong>
-            <span>Commerce workspace</span>
+            <strong>{hostname || 'Your workspace'}</strong>
+            <span>Storefront workspace</span>
           </div>
           <ChevronsUpDown size={13} />
         </div>
@@ -99,24 +110,21 @@ export function AppSidebar({
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={cn('nav-item', path.startsWith(item.href) && 'active')}
-              aria-current={path.startsWith(item.href) ? 'page' : undefined}
+              className={cn('nav-item', navigationActive(item, path) && 'active')}
+              aria-current={navigationActive(item, path) ? 'page' : undefined}
             >
               <item.icon size={17} strokeWidth={1.7} />
               <span>{item.label}</span>
             </Link>
           ))}
           <div className="nav-divider" />
-          {[
-            { href: '/integrations', label: 'Integrations', icon: Plug },
-            { href: '/settings', label: 'Settings', icon: Settings2 },
-          ].map((item) => (
+          {[settingsNavigation].map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={cn('nav-item', path.startsWith(item.href) && 'active')}
-              aria-current={path.startsWith(item.href) ? 'page' : undefined}
+              className={cn('nav-item', navigationActive(item, path) && 'active')}
+              aria-current={navigationActive(item, path) ? 'page' : undefined}
             >
               <item.icon size={17} strokeWidth={1.7} />
               {item.label}
@@ -161,21 +169,19 @@ function ArrowRightSmall() {
   return <ArrowUpRight size={12} />;
 }
 export function MerchantSelector() {
-  const { activeScan, dashboard } = useGateway();
-  const url = activeScan?.draft.merchantUrl || dashboard?.scans[0]?.merchantUrl;
+  const { hostname } = useStorefrontContext();
   return (
     <Link href="/discover" className="merchant-selector">
       <span className="merchant-avatar">
         <Mountain size={17} />
       </span>
-      <strong>{url ? new URL(url).hostname : 'Choose a storefront'}</strong>
+      <strong>{hostname || 'Choose a storefront'}</strong>
       <ChevronDown size={13} />
     </Link>
   );
 }
 export function EnvironmentSelector() {
-  const { activeScan, dashboard } = useGateway();
-  const environment = activeScan?.draft.environmentId || dashboard?.scans[0]?.environmentId;
+  const { environmentId: environment } = useStorefrontContext();
   return (
     <Link className="environment-selector" href="/discover">
       {environment || 'Select environment'}
@@ -201,7 +207,7 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
   const [notifications, setNotifications] = useState(false);
   const [identity, setIdentity] = useState('Your account');
   const { notify } = useApp();
-  const { activeScan, dashboard } = useGateway();
+  const { dashboard } = useGateway();
   const latest = dashboard?.scans[0];
   useEffect(() => {
     const controller = new AbortController();
@@ -223,7 +229,7 @@ export function TopNavigation({ onMenu }: { onMenu: () => void }) {
       <span className="topbar-divider" />
       <span className="topbar-domain">
         <Globe2 size={13} />
-        {activeScan?.draft.environmentId || latest?.environmentId || 'No test environment selected'}
+        Test environment
       </span>
       <EnvironmentSelector />
       <div className="topbar-right">
@@ -310,11 +316,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [help, setHelp] = useState(false);
   const { scanning, scanProgress } = useApp();
   const pathname = usePathname();
-  const current = [
-    ...navigation,
-    { href: '/integrations', label: 'Integrations' },
-    { href: '/settings', label: 'Settings' },
-  ].find((x) => pathname.startsWith(x.href));
+  const current = [...navigation, settingsNavigation].find((item) =>
+    navigationActive(item, pathname),
+  );
   if (
     pathname === '/' ||
     pathname === '/login' ||

@@ -1,3 +1,9 @@
+import {
+  demandRequestSchema,
+  demandResultSchema,
+  demandInstructions,
+  type DemandReport,
+} from './demand';
 import { randomUUID } from 'node:crypto';
 import { shopperInterests } from '../agent/interests';
 import { z } from 'zod';
@@ -121,6 +127,96 @@ export class GatewayService {
     private makeProvider: () => ModelProvider = () => new OpenAIProvider(),
     private makeBrowser: BrowserFactory = browserFactory,
   ) {}
+  async assessDemand(ownerId: string, id: string, input: z.infer<typeof demandRequestSchema>) {
+    return this.store.exclusive(`scan:${id}`, async () => {
+      const scan = await this.store.get('scan', ownerId, id);
+      if (scan.status === 'running' || scan.status === 'queued')
+        throw new GatewayError(
+          'SCAN_IN_PROGRESS',
+          'Finish the storefront scan before testing a proposed product.',
+          409,
+        );
+      const evidence = [
+        ...scan.draft.evidence,
+        ...scan.sessions.flatMap((session) =>
+          session.trace.flatMap((event) => (event.observation ? [event.observation] : [])),
+        ),
+      ];
+      const normalize = (url: string) => {
+        const parsed = new URL(url);
+        parsed.hash = '';
+        return parsed.href;
+      };
+      if (
+        !new Set([scan.draft.merchantUrl, ...evidence.map((item) => item.url)].map(normalize)).has(
+          normalize(input.pageUrl),
+        )
+      )
+        throw new GatewayError(
+          'INVALID_PAGE',
+          'Choose a page recorded in this storefront scan.',
+          400,
+        );
+      const provider = this.makeProvider();
+      const reportId = randomUUID();
+      const modelCalls: ModelCall[] = [];
+      const result = await provider.generate(
+        'demand',
+        demandResultSchema,
+        demandInstructions,
+        {
+          product: input,
+          storefront: scan.draft.context,
+          archetypes: scan.draft.archetypes,
+          evidence: evidence.map((item) => ({
+            id: item.id,
+            url: item.url,
+            title: item.title,
+            text: item.text.slice(0, 6000),
+            products: item.products,
+          })),
+          journeys: scan.sessions.map((session) => ({
+            archetypeId: session.archetype.id,
+            goal: session.scenario.goal,
+            constraints: session.scenario.hardConstraints,
+            decision:
+              session.trace.findLast(
+                (event) => event.status === 'executed' && event.action?.type === 'stop',
+              )?.action || null,
+          })),
+        },
+        async (call) => {
+          modelCalls.push(call);
+          await this.store.recordCall(ownerId, reportId, call);
+        },
+        AbortSignal.timeout(limits.sessionMs),
+      );
+      const profileIds = new Set(result.profiles.map((profile) => profile.archetypeId));
+      const evidenceIds = new Set(evidence.map((item) => item.id));
+      if (
+        profileIds.size !== scan.draft.archetypes.length ||
+        result.profiles.length !== scan.draft.archetypes.length ||
+        scan.draft.archetypes.some((profile) => !profileIds.has(profile.id)) ||
+        result.profiles.some((profile) => profile.evidenceIds.some((ref) => !evidenceIds.has(ref)))
+      )
+        throw new GatewayError(
+          'INVALID_MODEL_OUTPUT',
+          'The demand assessment did not reference the reviewed profiles and recorded evidence correctly. Please retry.',
+          502,
+        );
+      const report: DemandReport = {
+        id: reportId,
+        createdAt: now(),
+        fixture: provider.fixture,
+        product: input,
+        result,
+        modelCalls,
+      };
+      scan.demandReports = [report, ...(scan.demandReports || [])].slice(0, 20);
+      await this.store.save('scan', scan);
+      return report;
+    });
+  }
   async inspect(ownerId: string, input: z.infer<typeof inspectRequestSchema>) {
     const selectedInterests = shopperInterests.filter((item) =>
       input.shopperInterests?.includes(item.id),
@@ -527,8 +623,8 @@ export class GatewayService {
 }
 
 // Next.js keeps globalThis during hot reloads. Version the cached runner so a
-// runner created before screenshot support cannot keep executing stale code.
-const runnerVersion = 4;
+// runners created before new workflow capabilities cannot keep executing stale code.
+const runnerVersion = 7;
 const globalGateway = globalThis as typeof globalThis & {
   gatewayService?: GatewayService;
   gatewayServiceVersion?: number;

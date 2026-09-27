@@ -149,3 +149,20 @@ export function useGateway() {
   if (!value) throw new Error('GatewayProvider is required.');
   return value;
 }
+
+// Keep shell labels on the same storefront, including after a newer saved run loads.
+export function useStorefrontContext() {
+  const { activeScan, dashboard } = useGateway();
+  const latest = dashboard?.scans[0];
+  const active =
+    activeScan && (!latest || activeScan.id === latest.id || !terminalScan(activeScan))
+      ? activeScan
+      : null;
+  const merchantUrl = active?.draft.merchantUrl || latest?.merchantUrl || null;
+  return {
+    scanId: active?.id || latest?.id || null,
+    merchantUrl,
+    hostname: merchantUrl ? new URL(merchantUrl).hostname : null,
+    environmentId: active?.draft.environmentId || latest?.environmentId || null,
+  };
+}
