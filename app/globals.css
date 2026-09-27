@@ -7363,8 +7363,47 @@ svg {
   padding: 4px 8px;
   letter-spacing: 0.4px;
 }
+.pitch-number > svg {
+  display: block;
+  color: var(--blue);
+}
 .pitch-body {
   padding: 4px 20px 20px;
+}
+.pitch-audiences {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pitch-audience {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px 15px;
+  background: #fbfcfe;
+}
+.pitch-audience-tier {
+  flex-shrink: 0;
+  width: 74px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--blue);
+  padding-top: 2px;
+}
+.pitch-audience strong {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.pitch-audience p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #5b6478;
+  margin-top: 4px;
 }
 .pitch-points {
   display: flex;
@@ -7565,6 +7604,10 @@ svg {
 @media (max-width: 760px) {
   .pitch-banner p {
     font-size: 16px;
+  }
+  .pitch-audience {
+    flex-direction: column;
+    gap: 6px;
   }
   .pitch-checklist > strong {
     margin-left: 0;
