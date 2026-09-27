@@ -1,11 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, CardHeader, EmptyState, StatusBadge } from '@/components/ui/primitives';
 import { gatewayRequest, GatewayApiError, type FindingResult } from '@/lib/gateway/client';
 import { groupFindings, urgencyLabel } from '@/lib/gateway/finding-guidance';
 import type { Scan, Session } from '@/lib/gateway/schemas';
-import { Wrench } from 'lucide-react';
+import { Check, Copy, Sparkles, Wrench } from 'lucide-react';
 import { ScanEconomics } from './scan-economics';
 import { ScanExecution } from './scan-execution';
 
@@ -77,6 +77,57 @@ export function OutcomeBadge({ session }: { session: Pick<Session, 'status' | 'e
     </StatusBadge>
   );
 }
+/**
+ * Collapsed by default: most merchants want the plain-language fix, not an
+ * AI-editor prompt, so this stays a click away rather than shown up front.
+ */
+function AiPromptToggle({ prompt }: { prompt: string }) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const textRef = useRef<HTMLPreElement>(null);
+  const reset = () => setTimeout(() => setCopyState('idle'), 2500);
+  return (
+    <details className="finding-ai-prompt">
+      <summary>
+        <Sparkles size={13} />
+        AI website-builder prompt
+      </summary>
+      <p className="finding-ai-prompt-note">
+        Paste this into your site's AI editor (Shopify Sidekick, Wix ADI, Framer AI, Squarespace
+        AI, or a coding assistant) to make this change automatically.
+      </p>
+      <pre className="finding-ai-prompt-text" ref={textRef}>
+        {prompt}
+      </pre>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          navigator.clipboard
+            .writeText(prompt)
+            .then(() => setCopyState('copied'))
+            .catch(() => {
+              // Clipboard access can be denied by browser policy even on a
+              // real click. Select the text instead so the merchant can still
+              // copy it with their own keyboard shortcut.
+              const range = document.createRange();
+              if (textRef.current) range.selectNodeContents(textRef.current);
+              window.getSelection()?.removeAllRanges();
+              window.getSelection()?.addRange(range);
+              setCopyState('failed');
+            })
+            .finally(reset);
+        }}
+      >
+        {copyState === 'copied' ? <Check size={13} /> : <Copy size={13} />}
+        {copyState === 'copied'
+          ? 'Copied'
+          : copyState === 'failed'
+            ? 'Selected — press Ctrl+C'
+            : 'Copy prompt'}
+      </Button>
+    </details>
+  );
+}
 export function FindingsList({ findings }: { findings: FindingResult[] }) {
   return (
     <Card>
@@ -116,6 +167,7 @@ export function FindingsList({ findings }: { findings: FindingResult[] }) {
                   ))}
                 </ul>
               </div>
+              <AiPromptToggle prompt={help.aiPrompt} />
               <details className="finding-detail">
                 <summary>
                   Technical detail{count > 1 ? ` · ${count} sessions` : ''}
