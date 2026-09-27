@@ -176,7 +176,7 @@ export default function PitchPage() {
     <>
       <PageHeading
         title="Why This Matters"
-        subtitle="How Gateway answers the four judging criteria, with the evidence behind each one."
+        subtitle="Who has this problem, what it costs them, how this deploys, and why it takes an agent."
       />
       <div className="pitch-banner pitch-enter">
         <p>Checklists grade your data. We test whether agents can buy.</p>
