@@ -5,7 +5,7 @@ test('workspace and account endpoint reject unauthenticated requests', async ({
   request,
 }) => {
   await page.goto('/dashboard');
-  await expect(page).toHaveURL('/login');
+  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   const response = await request.get('/api/account');
   expect(response.status()).toBe(401);
@@ -43,7 +43,8 @@ test('signup form validates fields and offers password visibility', async ({ pag
 
 test('unconfigured providers explain availability and return focus', async ({ page }) => {
   await page.goto('/login');
-  for (const button of ['Continue with Google', 'Continue with SSO', 'Forgot password?']) {
+  await expect(page.getByRole('button', { name: 'Continue with Google', exact: true })).toBeEnabled();
+  for (const button of ['Continue with SSO', 'Forgot password?']) {
     await page.getByRole('button', { name: button, exact: true }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('button', { name: 'Back to sign in' }).click();
@@ -74,16 +75,18 @@ test('live account can sign in, read its profile, and sign out', async ({ page }
     !process.env.GATEWAY_TEST_EMAIL || !process.env.GATEWAY_TEST_PASSWORD,
     'Requires a confirmed Supabase test account and applied migration.',
   );
-  await page.goto('/login');
+  await page.goto('/login?next=%2Fdashboard');
   await page.getByLabel('Work email').fill(process.env.GATEWAY_TEST_EMAIL!);
   await page.getByLabel('Password', { exact: true }).fill(process.env.GATEWAY_TEST_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page).toHaveURL('/discover', { timeout: 20000 });
+  await expect(page).toHaveURL('/dashboard', { timeout: 20000 });
   const response = await page.request.get('/api/account');
   expect(response.ok()).toBe(true);
   const account = await response.json();
   expect(account.user.email).toBe(process.env.GATEWAY_TEST_EMAIL);
   expect(account.profile.id).toBe(account.user.id);
+  await page.goto('/login');
+  await expect(page).toHaveURL('/discover');
   await page.goto('/dashboard');
   await page.locator('.user-menu').click();
   await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();

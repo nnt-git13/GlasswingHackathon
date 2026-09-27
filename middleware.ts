@@ -1,11 +1,17 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseConfig } from '@/lib/supabase/config';
+import { safeNextPath } from '@/lib/auth/redirect';
+
+function copyResponseCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => to.cookies.set(cookie));
+  return to;
+}
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const publicPage =
-    ['/', '/login', '/signup', '/discover'].includes(path) || path.startsWith('/auth/');
+  const authEntryPage = ['/', '/login', '/signup'].includes(path);
+  const publicPage = authEntryPage || path === '/discover' || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
   let authenticated = false;
@@ -27,7 +33,13 @@ export async function middleware(request: NextRequest) {
       authenticated = false;
     }
   }
-  if (!publicPage && !authenticated) {
+
+  if (authenticated && authEntryPage) {
+    response = copyResponseCookies(
+      response,
+      NextResponse.redirect(new URL('/discover', request.url)),
+    );
+  } else if (!publicPage && !authenticated) {
     const blocked = path.startsWith('/api/')
       ? NextResponse.json(
           path.startsWith('/api/gateway')
@@ -42,10 +54,17 @@ export async function middleware(request: NextRequest) {
             : { error: 'Authentication required.' },
           { status: 401 },
         )
-      : NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.getAll().forEach((cookie) => blocked.cookies.set(cookie));
-    response = blocked;
+      : (() => {
+          const login = new URL('/login', request.url);
+          login.searchParams.set(
+            'next',
+            safeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+          );
+          return NextResponse.redirect(login);
+        })();
+    response = copyResponseCookies(response, blocked);
   }
+
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }

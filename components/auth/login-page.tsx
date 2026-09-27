@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { authenticate } from '@/app/auth/actions';
+import { authenticate, startGoogleSignIn } from '@/app/auth/actions';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -29,10 +29,6 @@ import { Dialog } from '@/components/ui/primitives';
 import styles from './login.module.css';
 
 const notices = {
-  google: [
-    'Google sign-in',
-    'Google sign-in is not enabled yet. Please sign in with your email and password.',
-  ],
   sso: [
     'Single sign-on',
     'Your organization’s identity provider is not connected. Please sign in with your email and password.',
@@ -250,18 +246,23 @@ function SessionPreview() {
 
 export function LoginPage({
   mode = 'signin',
-  confirmationError = false,
+  authError = '',
+  nextPath = '/discover',
 }: {
   mode?: 'signin' | 'signup';
-  confirmationError?: boolean;
+  authError?: string;
+  nextPath?: string;
 }) {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState(
-    confirmationError
+    authError === 'confirmation'
       ? 'This confirmation link is invalid or expired. Try signing in or request a new confirmation email.'
-      : '',
+      : authError === 'oauth'
+        ? 'Google sign-in was not completed. Try again or use your email and password.'
+        : '',
   );
   const [message, setMessage] = useState('');
   const [notice, setNotice] = useState<keyof typeof notices | null>(null);
@@ -272,11 +273,11 @@ export function LoginPage({
     setError('');
     setMessage('');
     try {
-      const result = await authenticate(mode, form);
+      const result = await authenticate(mode, form, nextPath);
       if (result.error) setError(result.error);
       if (result.message) setMessage(result.message);
       if (result.success) {
-        router.replace('/discover');
+        router.replace(nextPath);
         router.refresh();
       }
     } catch {
@@ -285,6 +286,24 @@ export function LoginPage({
       setBusy(false);
     }
   }
+  async function googleSignIn() {
+    setGoogleBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const result = await startGoogleSignIn(nextPath);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (result.url) window.location.assign(result.url);
+    } catch {
+      setError('Unable to start Google sign-in. Please try again.');
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+  const nextQuery = nextPath === '/discover' ? '' : `?next=${encodeURIComponent(nextPath)}`;
   return (
     <main className={styles.page}>
       <section className={styles.login} aria-labelledby="login-title">
@@ -388,9 +407,9 @@ export function LoginPage({
             <span />
           </div>
           <div className={styles.providers}>
-            <button onClick={() => setNotice('google')}>
-              <GoogleMark />
-              Continue with Google
+            <button type="button" onClick={googleSignIn} disabled={googleBusy || busy}>
+              {googleBusy ? <Loader2 size={19} className={styles.spinner} /> : <GoogleMark />}
+              {googleBusy ? 'Connecting to Google…' : 'Continue with Google'}
             </button>
             <button onClick={() => setNotice('sso')}>
               <Building2 size={23} />
@@ -399,7 +418,7 @@ export function LoginPage({
           </div>
           <p className={styles.request}>
             {mode === 'signup' ? 'Already have an account? ' : 'New to Gateway? '}
-            <Link href={mode === 'signup' ? '/login' : '/signup'}>
+            <Link href={`${mode === 'signup' ? '/login' : '/signup'}${nextQuery}`}>
               {mode === 'signup' ? 'Sign in' : 'Create an account'}
             </Link>
           </p>
