@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
 import { safeNextPath } from '@/lib/auth/redirect';
 
+const demoSessionCookie = 'gateway-demo-session';
+
 function copyResponseCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => to.cookies.set(cookie));
   return to;
@@ -16,7 +18,7 @@ export async function middleware(request: NextRequest) {
   const config = supabaseConfig();
   // Demo auth is explicit so stale/unreachable Supabase configuration cannot block the hackathon flow.
   const demoMode = demoAuthEnabled();
-  let authenticated = false;
+  let authenticated = demoMode && request.cookies.get(demoSessionCookie)?.value === '1';
   if (config && !demoMode) {
     const supabase = createServerClient(config.url, config.key, {
       cookies: {
@@ -41,7 +43,7 @@ export async function middleware(request: NextRequest) {
       response,
       NextResponse.redirect(new URL('/discover', request.url)),
     );
-  } else if (!publicPage && !authenticated && !demoMode) {
+  } else if (!publicPage && !authenticated) {
     const blocked = path.startsWith('/api/')
       ? NextResponse.json(
           path.startsWith('/api/gateway')

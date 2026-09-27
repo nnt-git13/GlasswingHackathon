@@ -1,12 +1,14 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
 import { safeNextPath } from '@/lib/auth/redirect';
 
 type Result = { error?: string; message?: string; success?: boolean; url?: string };
 const unavailable = 'Account services are not configured yet. Please try again later.';
+const demoSessionCookie = 'gateway-demo-session';
 
 export async function authenticate(
   mode: 'signin' | 'signup',
@@ -24,7 +26,17 @@ export async function authenticate(
   if (mode === 'signup' && (password.length < 8 || fullName.length < 1 || fullName.length > 100))
     return { error: 'Enter your name and a password with at least 8 characters.' };
   // Explicit hackathon demo mode accepts well-formed local credentials without Supabase.
-  if (demoAuthEnabled()) return { success: true };
+  if (demoAuthEnabled()) {
+    const cookieStore = await cookies();
+    cookieStore.set(demoSessionCookie, '1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 8,
+    });
+    return { success: true };
+  }
   try {
     const supabase = await createClient();
     if (mode === 'signup') {
@@ -94,6 +106,11 @@ export async function startGoogleSignIn(nextPath?: string): Promise<Result> {
 }
 
 export async function signOut(): Promise<Result> {
+  if (demoAuthEnabled()) {
+    const cookieStore = await cookies();
+    cookieStore.delete(demoSessionCookie);
+    redirect('/login');
+  }
   try {
     const supabase = await createClient();
     const { error } = await supabase.auth.signOut({ scope: 'local' });
