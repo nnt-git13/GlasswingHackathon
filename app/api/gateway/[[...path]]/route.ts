@@ -2,12 +2,17 @@ import { createClient } from '@/lib/supabase/server';
 import { handleGateway } from '@/lib/gateway/api';
 import { GatewayError } from '@/lib/gateway/errors';
 import { gatewayService } from '@/lib/gateway/service';
+import { demoAuthEnabled } from '@/lib/supabase/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // A persistent Node deployment is required; scan execution is request-bound.
 export const maxDuration = 900;
 async function authenticate() {
+  // Explicit local hackathon demo mode keeps Gateway data owner-scoped.
+  // Normal deployments still require a verified Supabase user below.
+  if (demoAuthEnabled()) return 'local-demo-user';
+
   try {
     const client = await createClient();
     const {

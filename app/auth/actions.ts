@@ -1,33 +1,53 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { supabaseConfig } from '@/lib/supabase/config';
+import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
+import { safeNextPath } from '@/lib/auth/redirect';
 
-type Result = { error?: string; message?: string; success?: boolean };
+type Result = { error?: string; message?: string; success?: boolean; url?: string };
 const unavailable = 'Account services are not configured yet. Please try again later.';
+const demoSessionCookie = 'gateway-demo-session';
 
-export async function authenticate(mode: 'signin' | 'signup', form: FormData): Promise<Result> {
+export async function authenticate(
+  mode: 'signin' | 'signup',
+  form: FormData,
+  nextPath?: string,
+): Promise<Result> {
   const email = String(form.get('email') || '').trim();
   const password = String(form.get('password') || '');
   const fullName = String(form.get('full_name') || '').trim();
+  const next = safeNextPath(nextPath);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
     return { error: 'Enter a valid email address.' };
   if (!password || password.length > 128)
     return { error: 'Enter a password of at most 128 characters.' };
   if (mode === 'signup' && (password.length < 8 || fullName.length < 1 || fullName.length > 100))
     return { error: 'Enter your name and a password with at least 8 characters.' };
-  // Demo mode: no account service configured, accept well-formed credentials.
-  if (!supabaseConfig()) return { success: true };
+  // Explicit hackathon demo mode accepts well-formed local credentials without Supabase.
+  if (demoAuthEnabled()) {
+    const cookieStore = await cookies();
+    cookieStore.set(demoSessionCookie, '1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 8,
+    });
+    return { success: true };
+  }
   try {
     const supabase = await createClient();
     if (mode === 'signup') {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
       if (!siteUrl) return { error: unavailable };
+      const callback = new URL('/auth/callback', siteUrl);
+      if (next !== '/discover') callback.searchParams.set('next', next);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName }, emailRedirectTo: `${siteUrl}/auth/callback` },
+        options: { data: { full_name: fullName }, emailRedirectTo: callback.toString() },
       });
       if (error)
         return {
@@ -59,7 +79,38 @@ export async function authenticate(mode: 'signin' | 'signup', form: FormData): P
   }
 }
 
+export async function startGoogleSignIn(nextPath?: string): Promise<Result> {
+  if (!supabaseConfig()) return { error: unavailable };
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  if (!siteUrl) return { error: unavailable };
+  const next = safeNextPath(nextPath);
+  const callback = new URL('/auth/callback', siteUrl);
+  if (next !== '/discover') callback.searchParams.set('next', next);
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: callback.toString() },
+    });
+    if (error || !data.url)
+      return {
+        error:
+          error?.status === 429
+            ? 'Too many attempts. Please wait and try again.'
+            : 'Google sign-in is unavailable right now. Try your email and password.',
+      };
+    return { url: data.url };
+  } catch {
+    return { error: 'Unable to start Google sign-in. Please try again.' };
+  }
+}
+
 export async function signOut(): Promise<Result> {
+  if (demoAuthEnabled()) {
+    const cookieStore = await cookies();
+    cookieStore.delete(demoSessionCookie);
+    redirect('/login');
+  }
   try {
     const supabase = await createClient();
     const { error } = await supabase.auth.signOut({ scope: 'local' });

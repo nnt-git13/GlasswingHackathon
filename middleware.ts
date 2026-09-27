@@ -1,17 +1,25 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { supabaseConfig } from '@/lib/supabase/config';
+import { demoAuthEnabled, supabaseConfig } from '@/lib/supabase/config';
+import { safeNextPath } from '@/lib/auth/redirect';
+
+const demoSessionCookie = 'gateway-demo-session';
+
+function copyResponseCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => to.cookies.set(cookie));
+  return to;
+}
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-const publicPage = ['/', '/login', '/signup'].includes(path) || path.startsWith('/auth/');
+  const authEntryPage = ['/', '/login', '/signup'].includes(path);
+  const publicPage = authEntryPage || path.startsWith('/auth/');
   let response = NextResponse.next({ request });
   const config = supabaseConfig();
-  // Demo mode: with no Supabase configured there is no real account service,
-  // so protected routes stay open. A configured deployment enforces auth.
-  const demoMode = !config;
-  let authenticated = false;
-  if (config) {
+  // Demo auth is explicit so stale/unreachable Supabase configuration cannot block the hackathon flow.
+  const demoMode = demoAuthEnabled();
+  let authenticated = demoMode && request.cookies.get(demoSessionCookie)?.value === '1';
+  if (config && !demoMode) {
     const supabase = createServerClient(config.url, config.key, {
       cookies: {
         getAll: () => request.cookies.getAll(),
@@ -29,7 +37,13 @@ const publicPage = ['/', '/login', '/signup'].includes(path) || path.startsWith(
       authenticated = false;
     }
   }
-  if (!publicPage && !authenticated && !demoMode) {
+
+  if (authenticated && authEntryPage) {
+    response = copyResponseCookies(
+      response,
+      NextResponse.redirect(new URL('/discover', request.url)),
+    );
+  } else if (!publicPage && !authenticated) {
     const blocked = path.startsWith('/api/')
       ? NextResponse.json(
           path.startsWith('/api/gateway')
@@ -44,10 +58,17 @@ const publicPage = ['/', '/login', '/signup'].includes(path) || path.startsWith(
             : { error: 'Authentication required.' },
           { status: 401 },
         )
-      : NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.getAll().forEach((cookie) => blocked.cookies.set(cookie));
-    response = blocked;
+      : (() => {
+          const login = new URL('/login', request.url);
+          login.searchParams.set(
+            'next',
+            safeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+          );
+          return NextResponse.redirect(login);
+        })();
+    response = copyResponseCookies(response, blocked);
   }
+
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
