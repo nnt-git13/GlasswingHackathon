@@ -2,7 +2,18 @@ import { z } from 'zod';
 
 const text = z.string().min(1).max(2000);
 const refs = z.array(z.string().min(1)).min(1).max(30);
-export const actionKind = z.enum(['navigate', 'search', 'inspect_product', 'stop']);
+export const actionKind = z.enum([
+  'navigate',
+  'search',
+  'inspect_product',
+  // Checkout actions. Only usable on an environment that opted into checkout
+  // testing; `fill_checkout` never touches a payment field.
+  'add_to_cart',
+  'view_cart',
+  'begin_checkout',
+  'fill_checkout',
+  'stop',
+]);
 export const modeSchema = z.enum(['legitimate', 'constraint', 'red_team']);
 export const provenanceSchema = z.strictObject({
   evidenceIds: refs,
@@ -46,7 +57,7 @@ export const scenarioSchema = z.strictObject({
   goal: text,
   hardConstraints: z.array(constraintSchema).max(12),
   softPreferences: z.array(text).max(12),
-  permittedActions: z.array(actionKind).min(1).max(4),
+  permittedActions: z.array(actionKind).min(1).max(8),
   authorizedStoppingPoint: z.literal('recommend_or_decline'),
   expectedOutcome: z.enum(['recommend', 'decline']),
   provenance: provenanceSchema,

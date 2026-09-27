@@ -158,6 +158,37 @@ test('browser restricts URLs, credentials, mutation queries, and private network
   ).rejects.toThrow('prohibited');
 });
 
+test('checkout paths open only for an environment that opted in, and never the dangerous ones', () => {
+  const readOnly = environment('test');
+  const checkoutEnabled = {
+    ...readOnly,
+    checkout: { enabled: true, pathPrefixes: ['/cart', '/checkout'] },
+  };
+
+  // Opting in must not be a way to reach an account, the admin surface, an
+  // existing order, or a payment page. These stay blocked either way.
+  for (const path of ['/account', '/account/login', '/admin', '/orders/1234', '/payments']) {
+    expect(() => allowedUrl(`${origin}${path}`, readOnly)).toThrow();
+    expect(() => allowedUrl(`${origin}${path}`, checkoutEnabled)).toThrow();
+  }
+
+  // Cart and checkout are blocked by default and reachable once opted in.
+  for (const path of ['/cart', '/checkout']) {
+    expect(() => allowedUrl(`${origin}${path}`, readOnly)).toThrow();
+    expect(allowedUrl(`${origin}${path}`, checkoutEnabled)).toBe(`${origin}${path}`);
+  }
+
+  // Checkout carries server-issued tokens, so it is exempt from the
+  // fail-closed query rule. Everything outside it still fails closed.
+  expect(allowedUrl(`${origin}/checkout/abc?step=contact_information`, checkoutEnabled)).toContain(
+    'step=contact_information',
+  );
+  expect(() => allowedUrl(`${origin}/products/pack?step=contact_information`, checkoutEnabled)).toThrow();
+
+  // Opting in never widens the origin.
+  expect(() => allowedUrl('https://evil.example.com/cart', checkoutEnabled)).toThrow();
+});
+
 test('read-only query rules are scoped and attribution is removed before navigation', () => {
   const env = {
     ...environment('test'),

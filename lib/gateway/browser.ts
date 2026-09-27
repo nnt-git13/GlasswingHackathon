@@ -8,9 +8,44 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { GatewayError } from './errors';
 import type { TestEnvironment } from './config';
 import type { Action, Observation, Scenario } from './schemas';
+import { paymentFieldPattern, testIdentity } from './test-identity';
 
-const forbiddenPath =
-  /(?:^|\/)(?:checkout|cart|account|login|logout|admin|orders?|payments?|purchase|buy|subscribe)(?:\/|$)/i;
+/**
+ * Ordered [pattern, value] pairs handed into the page context so checkout
+ * fields can be matched by name/id/autocomplete. Payment fields are absent by
+ * construction — there is no value here that could fill one.
+ */
+function checkoutFieldMap(): [string, string][] {
+  return [
+    ['first[_-]?name|given[_-]?name', testIdentity.firstName],
+    ['last[_-]?name|family[_-]?name|surname', testIdentity.lastName],
+    ['e[-_]?mail', testIdentity.email],
+    ['phone|tel|mobile', testIdentity.phone],
+    ['address.?2|apartment|apt|suite', testIdentity.address2],
+    ['address|street|line1', testIdentity.address1],
+    ['city|town|locality', testIdentity.city],
+    ['province|state|region', testIdentity.provinceCode],
+    ['zip|postal|postcode', testIdentity.zip],
+    ['country', testIdentity.countryCode],
+  ];
+}
+
+// Never reachable, on any environment, however it is configured. These are
+// the paths where a mistake is not recoverable: someone else's account, the
+// admin surface, an existing order, or a payment page.
+const alwaysForbiddenPath =
+  /(?:^|\/)(?:account|login|logout|admin|orders?|payments?|subscribe)(?:\/|$)/i;
+// Blocked by default, reachable only on an environment that has explicitly
+// opted into checkout testing and listed the path in checkout.pathPrefixes.
+const mutationPath = /(?:^|\/)(?:checkout|cart|purchase|buy)(?:\/|$)/i;
+
+/** True when this path is inside the environment's opted-in checkout surface. */
+export function isCheckoutPath(path: string, env: TestEnvironment) {
+  if (!env.checkout?.enabled) return false;
+  return env.checkout.pathPrefixes.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix.replace(/\/$/, '')}/`),
+  );
+}
 export function allowedUrl(raw: string, env: TestEnvironment): string {
   let url: URL;
   try {
@@ -35,11 +70,14 @@ export function allowedUrl(raw: string, env: TestEnvironment): string {
     !['https:', 'http:'].includes(url.protocol) ||
     path.includes('\\') ||
     path.split('/').includes('..') ||
-    forbiddenPath.test(path) ||
-    !env.allowedPathPrefixes.some((prefix) =>
-      prefix === '/'
-        ? path === '/'
-        : path === prefix || path.startsWith(`${prefix.replace(/\/$/, '')}/`),
+    alwaysForbiddenPath.test(path) ||
+    (mutationPath.test(path) && !isCheckoutPath(path, env)) ||
+    !(
+      env.allowedPathPrefixes.some((prefix) =>
+        prefix === '/'
+          ? path === '/'
+          : path === prefix || path.startsWith(`${prefix.replace(/\/$/, '')}/`),
+      ) || isCheckoutPath(path, env)
     )
   ) {
     throw new GatewayError(
@@ -53,7 +91,11 @@ export function allowedUrl(raw: string, env: TestEnvironment): string {
   for (const key of [...url.searchParams.keys()]) {
     if (/^utm_(source|medium|campaign|term|content)$/i.test(key)) url.searchParams.delete(key);
   }
+  // Checkout carries server-issued tokens and step parameters that cannot be
+  // enumerated ahead of time, so the opted-in checkout surface is exempt from
+  // the fail-closed query rule. Everything outside it still fails closed.
   if (
+    !isCheckoutPath(path, env) &&
     [...url.searchParams.keys()].some(
       (key) =>
         !(key === env.searchQueryParam && url.pathname === env.searchPath) &&
@@ -104,6 +146,12 @@ async function readResource(
   headers: Record<string, string>,
   method: string,
   signal: AbortSignal,
+  body?: Buffer | null,
+  // Checkout is a chain of redirects (add-to-cart -> cart -> tokenised
+  // checkout). Rather than following them here, hand the 3xx back to the
+  // browser so the next hop re-enters allowedUrl and is validated like any
+  // other navigation.
+  passRedirects = false,
 ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
   const url = new URL(raw);
   return new Promise((resolve, reject) => {
@@ -120,7 +168,12 @@ async function readResource(
         agent: false,
       },
       (response) => {
-        if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400) {
+        if (
+          !passRedirects &&
+          response.statusCode &&
+          response.statusCode >= 300 &&
+          response.statusCode < 400
+        ) {
           response.destroy();
           reject(
             new GatewayError(
@@ -161,6 +214,7 @@ async function readResource(
     );
     request.setTimeout(15_000, () => request.destroy(new Error('Storefront request timed out.')));
     request.on('error', reject);
+    if (body?.length) request.write(body);
     request.end();
   });
 }
@@ -205,6 +259,28 @@ export function validateAction(
         'Search requires a query and no arbitrary URL.',
         422,
       );
+    return;
+  }
+  if (
+    action.type === 'view_cart' ||
+    action.type === 'begin_checkout' ||
+    action.type === 'fill_checkout' ||
+    action.type === 'add_to_cart'
+  ) {
+    if (!env.checkout?.enabled)
+      throw new GatewayError(
+        'ACTION_BLOCKED',
+        'Checkout testing is not enabled for this environment.',
+        422,
+      );
+    if (action.query !== null)
+      throw new GatewayError('ACTION_BLOCKED', 'Checkout actions take no search query.', 422);
+    // add_to_cart may name the product page it should act on; the rest operate
+    // on the cart and checkout surface and take no URL.
+    if (action.type === 'add_to_cart') {
+      if (action.url) allowedUrl(action.url, env);
+    } else if (action.url !== null)
+      throw new GatewayError('ACTION_BLOCKED', 'This checkout action takes no URL.', 422);
     return;
   }
   if (!action.url || action.query !== null)
@@ -269,8 +345,18 @@ export class StorefrontBrowser implements ShopperBrowser {
       await context.route('**/*', async (route) => {
         const request = route.request();
         try {
-          if (!['GET', 'HEAD'].includes(request.method())) throw new Error();
+          // Read-only by default. A mutating request is permitted only on an
+          // environment that opted into checkout testing, and only to a path
+          // inside its declared checkout surface — allowedUrl still runs.
+          if (!['GET', 'HEAD'].includes(request.method())) {
+            const target = new URL(request.url());
+            if (!isCheckoutPath(decodeURIComponent(target.pathname), env)) throw new Error();
+          }
           const resourceUrl = allowedUrl(request.url(), env);
+          const onCheckoutSurface = isCheckoutPath(
+            decodeURIComponent(new URL(resourceUrl).pathname),
+            env,
+          );
           await route.fulfill(
             await readResource(
               resourceUrl,
@@ -278,6 +364,8 @@ export class StorefrontBrowser implements ShopperBrowser {
               await request.allHeaders(),
               request.method(),
               signal,
+              request.postDataBuffer(),
+              onCheckoutSurface,
             ),
           );
         } catch (error) {
@@ -328,6 +416,14 @@ export class StorefrontBrowser implements ShopperBrowser {
         true,
       );
     allowedUrl(this.page.url(), this.env);
+    return this.snapshot(kind);
+  }
+  /**
+   * Scrapes whatever the page currently shows, without navigating. Checkout
+   * actions need this: re-navigating after filling a form would discard the
+   * values that were just entered.
+   */
+  async snapshot(kind: 'page' | 'product' = 'page'): Promise<Observation> {
     await this.page.locator('body').waitFor();
     // Streamed storefronts can hydrate their catalog after DOMContentLoaded.
     // Bound both loading and DOM settling; background analytics must not hang a session.
@@ -449,12 +545,116 @@ export class StorefrontBrowser implements ShopperBrowser {
       kind,
     };
   }
+  private requireCheckoutEnabled() {
+    if (!this.env.checkout?.enabled)
+      throw new GatewayError(
+        'ACTION_BLOCKED',
+        'Checkout testing is not enabled for this environment.',
+        422,
+      );
+  }
+  /** Refuses to continue once the page is asking for payment details. */
+  private async assertNotPaymentStep() {
+    const names = await this.page
+      .locator('input, select')
+      .evaluateAll((nodes) =>
+        nodes.map((node) =>
+          [
+            node.getAttribute('name'),
+            node.getAttribute('id'),
+            node.getAttribute('autocomplete'),
+            node.getAttribute('placeholder'),
+          ]
+            .filter(Boolean)
+            .join(' '),
+        ),
+      )
+      .catch(() => [] as string[]);
+    if (names.some((descriptor) => paymentFieldPattern.test(descriptor)))
+      throw new GatewayError(
+        'PAYMENT_STEP_REACHED',
+        'Reached the payment step. The agent stops here and never enters payment details.',
+        422,
+      );
+  }
+  private async clickFirst(selectors: string[]) {
+    for (const selector of selectors) {
+      const target = this.page.locator(selector).first();
+      if (await target.count().then((n) => n > 0).catch(() => false)) {
+        await target.click({ timeout: 8_000 }).catch(() => {});
+        await this.page.waitForLoadState('domcontentloaded').catch(() => {});
+        return true;
+      }
+    }
+    return false;
+  }
   async execute(action: Action) {
     if (action.type === 'stop') return null;
     if (action.type === 'search') {
       const url = new URL(this.env.searchPath, this.env.origin);
       url.searchParams.set(this.env.searchQueryParam, action.query!);
       return this.observe(url.href);
+    }
+    if (action.type === 'add_to_cart') {
+      this.requireCheckoutEnabled();
+      if (action.url) await this.observe(action.url, 'product');
+      const clicked = await this.clickFirst([
+        'form[action*="/cart/add"] button[type="submit"]',
+        'form[action*="/cart/add"] [name="add"]',
+        'button[name="add"]',
+        'button:has-text("Add to cart")',
+      ]);
+      if (!clicked)
+        throw new GatewayError(
+          'ACTION_BLOCKED',
+          'No add-to-cart control could be found on this page.',
+          422,
+        );
+      return this.observe(new URL('/cart', this.env.origin).href);
+    }
+    if (action.type === 'view_cart') {
+      this.requireCheckoutEnabled();
+      return this.observe(new URL('/cart', this.env.origin).href);
+    }
+    if (action.type === 'begin_checkout') {
+      this.requireCheckoutEnabled();
+      await this.observe(new URL('/cart', this.env.origin).href);
+      await this.clickFirst([
+        'form[action*="/cart"] [name="checkout"]',
+        'button[name="checkout"]',
+        'a[href*="/checkout"]',
+        'button:has-text("Check out")',
+      ]);
+      await this.assertNotPaymentStep();
+      return this.snapshot('page');
+    }
+    if (action.type === 'fill_checkout') {
+      this.requireCheckoutEnabled();
+      await this.assertNotPaymentStep();
+      await this.page
+        .locator('input:visible, select:visible')
+        .evaluateAll((nodes, identity) => {
+          for (const node of nodes) {
+            const element = node as HTMLInputElement | HTMLSelectElement;
+            const descriptor = [
+              element.getAttribute('name'),
+              element.getAttribute('id'),
+              element.getAttribute('autocomplete'),
+              element.getAttribute('placeholder'),
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+            const match = identity.find(([pattern]) => new RegExp(pattern, 'i').test(descriptor));
+            if (!match || !match[1]) continue;
+            element.value = match[1];
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, checkoutFieldMap())
+        .catch(() => {});
+      await this.assertNotPaymentStep();
+      return this.snapshot('page');
     }
     return this.observe(action.url!, action.type === 'inspect_product' ? 'product' : 'page');
   }
